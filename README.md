@@ -13,7 +13,7 @@ Deployed on Firebase
 
 ## Demo
 
-View the site from the [link](https://meme.altcore.fr//) given.
+View the site from the [https://meme.altcore.fr/](https://meme.altcore.fr/) given.
 
 
 ## Features
