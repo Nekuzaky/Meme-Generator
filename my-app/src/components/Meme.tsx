@@ -32,7 +32,7 @@ export default function Meme(){
             imgAlt:memealt,
         }))
     }
-
+     
     // const [style,setStyle]=React.useState({})
     // React.useEffect(()=>{
     //     setStyle({
@@ -58,6 +58,7 @@ export default function Meme(){
           box_count={2}
           imageName={meme.imgAlt}
         />
+        
         </main>
     )
 }

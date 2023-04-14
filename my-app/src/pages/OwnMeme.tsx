@@ -29,8 +29,6 @@ export default function OwnMeme() {
   return (
     <div className="container mx-auto mt-12">
      
-
-
     </div>
   );
 }
