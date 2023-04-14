@@ -59,7 +59,7 @@ export default function MemeGenerator({
                 className="w-full px-4 py-2 border border-primary rounded text-sm font-medium text-primary hover:text-paper tracking-wider md:w-auto"
                 onClick={addBox}
               >
-                Ajouter un text
+                Ajouter un texte
               </button>
 
               <button
