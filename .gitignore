@@ -1,14 +1,13 @@
 
-my-app/src/Components/Header.jsx
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
-/components/Header.jsx
 # testing
 /coverage
+my-app/node_modules
 
 # production
 /build
@@ -22,5 +21,4 @@ my-app/src/Components/Header.jsx
 
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-my-app/public/index.html
+yarn-error.log
