@@ -9,7 +9,6 @@ Create memes from templates, desktop images or image URL
 
 **Client:** React, TypeScript, TailwindCSS
 
-Deployed on Firebase
 
 ## Demo
 
@@ -32,7 +31,6 @@ Télécharger le meme finalisé : Utilisez la bibliothèque FileSaver.js pour pe
 
 Créer un meme en téléchargeant des images de bureau ou en insérant une URL d'image : Utilisez l'élément input de type "file" pour permettre aux utilisateurs de télécharger des images de bureau. Pour les images provenant d'URL, utilisez une bibliothèque JavaScript comme Axios pour récupérer l'image à partir de l'URL.
 
-Déployer l'application sur Firebase : Utilisez Firebase Hosting pour déployer l'application. Vous pouvez également utiliser Firebase Functions pour implémenter des fonctionnalités telles que l'envoi de notifications ou le traitement de données.
 
 
 ## Run Locally
