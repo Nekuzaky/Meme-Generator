@@ -1,11 +1,10 @@
 
 # React Meme Generator
-
-Create memes from templates, desktop images or image URL
+Crée un meme à partir d'une image aleatoires.
 
 <img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white "/>
 
-## Tech
+## GUIDES
 
 **Client:** React, TypeScript, TailwindCSS
 
