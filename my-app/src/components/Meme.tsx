@@ -17,8 +17,8 @@ export default function Meme(){
     const [meme,setMeme]=React.useState({
         topText:"",
         bottomText:"",
-        imgUrl:'https://i.imgflip.com/30b1gx.jpg',
-        imgAlt:'Drake Hotline Bling'
+        imgUrl:'https://i.imgflip.com/1tl71a.jpg',
+        imgAlt:'Loading...'
     })
     console.log(allMeme)
     function randomMeme(){
