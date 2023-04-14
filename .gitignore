@@ -8,6 +8,7 @@
 # testing
 /coverage
 my-app/node_modules
+my-app/build
 
 # production
 /build
