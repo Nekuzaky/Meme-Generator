@@ -10,9 +10,9 @@ Create memes from templates, desktop images or image URL
 **Client:** React, TypeScript, TailwindCSS
 
 
-## Demo
+## Préview de l'application
 
-View the site from the [https://meme.altcore.fr/](https://meme.altcore.fr/) given.
+View the site from the [https://meme.altcore.fr/](https://meme.altcore.fr/) 
 
 
 ## Features
@@ -33,28 +33,33 @@ Créer un meme en téléchargeant des images de bureau ou en insérant une URL d
 
 
 
-## Run Locally
+## Lancer le projet
 
 
-**Step 1: Clone the project**
+**Step 1: Cloner ou installer le projet**
 
 
-**Step 2: Go to the project directory**
+**Step 2: Ouvrir le dossier**
 
 ```bash
 cd my-app
 ```
 
-**Step 3: Install dependencies**
+**Step 3: Installer les packages**
 
 ```bash
 npm install
 ```
 
-**Step 4: Start the server** 
+**Step 4: Lancer le projet** 
 
 ```bash
 npm start
+```
+**Step 5: Exporter le projet** 
+
+```bash
+npm run build
 ```
 
 ## API Reference
