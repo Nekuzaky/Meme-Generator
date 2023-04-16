@@ -17,7 +17,7 @@ export default function Meme(){
     const [meme,setMeme]=React.useState({
         topText:"",
         bottomText:"",
-        imgUrl:'https://i.imgflip.com/1tl71a.jpg',
+        imgUrl:'https://i.imgflip.com/64sz4u.png',
         imgAlt:'Loading...'
     })
     console.log(allMeme)
