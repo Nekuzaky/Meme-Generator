@@ -18,7 +18,7 @@ export default function Meme(){
         topText:"",
         bottomText:"",
         imgUrl:'https://i.imgflip.com/64sz4u.png',
-        imgAlt:'No Download??'
+        imgAlt:'No meme ?'
     })
     console.log(allMeme)
     function randomMeme(){
