@@ -40,13 +40,13 @@ export default function ImageSection({ image }: IProps) {
 
   return (
     <div
-      className="container relative mx-auto w-full md:w-11/12"
+      className="relative mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-lg shadow-fuchsia-500/10"
       id="downloadMeme"
     >
       <img
         src={image}
         alt="memeImage"
-        className="relative object-contain w-full overflow-auto"
+        className="relative h-full w-full object-contain"
       />
 
       {boxes !== undefined &&

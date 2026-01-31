@@ -17,7 +17,7 @@ export default function Text({ index }: IProps) {
         <input
           type="text"
           value={state.text}
-          className="border-0 border-b-2 border-gray-400 text-primary-dark py-1 bg-transparent w-full focus:outline-none focus:border-primary"
+          className="w-full border-0 border-b-2 border-slate-600 bg-transparent py-1 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-fuchsia-400"
           placeholder={`Texte ${index + 1}`}
           onChange={handleCaptionChange}
         />

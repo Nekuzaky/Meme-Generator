@@ -47,33 +47,33 @@ export default function FontStyle() {
         onClick={handleDropDown}
         className="flex items-center justify-center"
       >
-        <BiFont className="text-primary text-2xl" />
+        <BiFont className="text-fuchsia-400 text-2xl" />
       </button>
 
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute z-50 px-5 right-0 py-5 bg-zinc-300 rounded-md mt-1"
+          className="absolute z-50 right-0 mt-2 rounded-xl border border-white/10 bg-slate-900/90 px-5 py-5 text-slate-100 shadow-xl shadow-fuchsia-500/10"
         >
           <div className="flex flex-col items-start">
-            <span>Font Family</span>
+            <span className="text-sm text-slate-300">Font Family</span>
             <select
               value={fontFamily}
               onChange={handleFontFamilyChange}
-              className="px-1 mt-1 text-sm bg-gray-100 border-2 border-gray-400 rounded cursor-pointer focus:outline-none"
+              className="mt-1 cursor-pointer rounded border border-white/10 bg-slate-950 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-fuchsia-400/80"
             >
               {fontOptions}
             </select>
           </div>
 
           <div className="mt-5 flex flex-col items-start">
-            <span>Font Size</span>
+            <span className="text-sm text-slate-300">Font Size</span>
             <input
               type="range"
               min="10"
               max="50"
               value={fontSize}
-              className="cursor-pointer mt-1 w-full"
+              className="mt-2 w-full cursor-pointer accent-fuchsia-400"
               onChange={handleFontSizeChange}
             />
           </div>

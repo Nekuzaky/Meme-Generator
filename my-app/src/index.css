@@ -2,4 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+	html {
+		font-family: "Open Sans", system-ui, sans-serif;
+	}
+
+	body {
+		@apply bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 min-h-screen;
+	}
+}
+
+@layer components {
+	.glass-card {
+		@apply rounded-2xl border border-white/10 bg-slate-900/70 backdrop-blur shadow-xl shadow-fuchsia-500/10;
+	}
+}
+
 

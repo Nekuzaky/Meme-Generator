@@ -1,65 +1,88 @@
-import React from 'react'
+import { useCallback, useEffect, useState } from "react";
 import MemeGenerator from "../components/MemeGenerator";
-export default function Meme(){
-    const [allMeme,setAllMeme]=React.useState([])
-    React.useEffect(() => {
-        async function fetchData(){
-            const res=await fetch('https://api.imgflip.com/get_memes')
-            const data=await res.json()
-            setAllMeme(data.data.memes)
-            console.log(data.data.memes)
-            if(data.data.memes){
-                randomMeme()
-                }
-        }
-        fetchData()
-    }, [])
-    const [meme,setMeme]=React.useState({
-        topText:"",
-        bottomText:"",
-        imgUrl:'https://i.imgflip.com/64sz4u.png',
-        imgAlt:'No meme ?'
-    })
-    console.log(allMeme)
-    function randomMeme(){
-        const randomNum=Math.floor(Math.random() * allMeme.length)
-        const currMeme=allMeme[randomNum]
-        const memeimg=currMeme["url"]
-        const memealt=currMeme["name"]
-        setMeme(prevState=>({
-            ...prevState,
-            imgUrl:memeimg,
-            imgAlt:memealt,
-        }))
-    }
-     
-    // const [style,setStyle]=React.useState({})
-    // React.useEffect(()=>{
-    //     setStyle({
-    //         backgroundImage:`url(${meme.imgUrl})`,
-    //         backgroundRepeat:'no-repeat',
-    //         backgroundSize:'contain',
-    //         backgroundPosition:'center'
-    //     })
-    // },[meme.imgUrl])
+import type { Meme as MemeType } from "../types/types";
 
+const fallbackMeme: MemeType = {
+    id: "fallback",
+    name: "Meme par défaut",
+    url: "https://i.imgflip.com/64sz4u.png",
+    box_count: 2,
+};
+
+export default function Meme() {
+    const [memes, setMemes] = useState<MemeType[]>([]);
+    const [currentMeme, setCurrentMeme] = useState<MemeType | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                const res = await fetch("https://api.imgflip.com/get_memes");
+                const data = await res.json();
+                setMemes(data.data.memes || []);
+            } catch (err) {
+                setError("Impossible de récupérer la liste des memes.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const randomMeme = useCallback(() => {
+        if (!memes.length) return;
+        const randomNum = Math.floor(Math.random() * memes.length);
+        setCurrentMeme(memes[randomNum]);
+    }, [memes]);
+
+    useEffect(() => {
+        if (memes.length) {
+            randomMeme();
+        }
+    }, [memes, randomMeme]);
+
+    const selectedMeme = currentMeme ?? fallbackMeme;
 
     return (
-        <main>
-            <div className='flex flex-col sm:justify-around items-center mt-3 justify-center'>
-                <p className="p-2"> ミ★ Reprend aléatoirement dans le top 100 des memes les plus populaires du moment ★彡 </p>
-                <button className='cursor-pointer bg-gradient-to-r  from-fuchsia-500 via-fuchsia-500 to-pink-500 md:w-[477px] w-96 md:h-[40px] h-16 rounded-md text-white font-Karla' onClick={randomMeme}>↓ Générer un nouveau Meme ↓</button>
-                {/* <div className='relative w-[477px] h-[350px] rounded-sm mt-5 drop-shadow-lg' style={style}>
-                    <h2 className="text-3xl font-['Impact'] drop-shadow-lg uppercase tracking-[1px] w-[80%] -translate-x-[50%] text-center absolute text-white left-1/2 top-5">{meme.topText}</h2>
-                    <h2 className="text-3xl font-['Impact'] drop-shadow-lg uppercase tracking-[1px] w-[80%] -translate-x-[50%] text-center absolute text-white left-1/2 bottom-7">{meme.bottomText}</h2>
-                </div> */}
+        <section className="glass-card w-full p-6 md:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-fuchsia-400">
+                        Memes tendance
+                    </p>
+                    <h2 className="text-2xl font-semibold text-slate-100 md:text-3xl">
+                        Pioche un meme aléatoire et personnalise-le
+                    </h2>
+                    <p className="text-sm text-slate-300 md:text-base">
+                        Sélection aléatoire du top 100. Ajoute tes textes, bouge-les et
+                        télécharge le résultat.
+                    </p>
+                </div>
+                <button
+                    className="w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl md:w-auto"
+                    onClick={randomMeme}
+                    disabled={isLoading}
+                >
+                    {isLoading ? "Chargement..." : "Générer un meme"}
+                </button>
             </div>
-            <MemeGenerator
-          imageUrl={meme.imgUrl}
-          box_count={2}
-          imageName={meme.imgAlt}
-        />
-        
-        </main>
-    )
+
+            {error ? (
+                <p className="mt-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    {error}
+                </p>
+            ) : (
+                <div className="mt-8">
+                    <MemeGenerator
+                        imageUrl={selectedMeme.url}
+                        box_count={selectedMeme.box_count ?? 2}
+                        imageName={selectedMeme.name}
+                    />
+                </div>
+            )}
+        </section>
+    );
 }

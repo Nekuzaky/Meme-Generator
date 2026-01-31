@@ -10,17 +10,19 @@ export default function App() {
   return (
     <MemeProvider>
       <Router>
-        <div className="flex flex-col h-screen">
+        <div className="flex min-h-screen flex-col">
           <Navbar />
-          <Meme />
-          <main className="flex-grow w-full mx-auto">
-            <Routes>
-              <Route path="/" element={<OwnMeme/>} />
-            </Routes>
+          <main className="flex-1">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 pb-16 pt-10 md:px-6">
+              <Meme />
+              <Routes>
+                <Route path="/" element={<OwnMeme />} />
+              </Routes>
+            </div>
           </main>
+          <Footer />
         </div>
       </Router>
-      <Footer/>
     </MemeProvider>
   );
 }

@@ -38,36 +38,36 @@ export default function MemeGenerator({
 
 
   return (
-    <div className="container mx-auto mt-6">
-      <div className="flex flex-col items-center gap-10 md:px-16 px-5 py-5 md:py-10 bg-gray-200 md:flex-row justify-evenly md:items-start md:gap-20">
-        {/* Image of the meme */}
+    <div className="glass-card w-full p-6 md:p-8">
+      <div className="flex flex-col gap-8 md:flex-row md:items-start">
         <div className="w-full md:w-1/2">
           <ImageSection image={imageUrl} />
         </div>
 
-        {/* Editing tools */}
         <div className="w-full md:w-1/2">
-          <div className="w-full md:mx-3">
-            {boxes.map((_, index) => (
-              <CaptionProvider key={index}>
-                <Caption index={index} />
-              </CaptionProvider>
-            ))}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              {boxes.map((_, index) => (
+                <CaptionProvider key={index}>
+                  <Caption index={index} />
+                </CaptionProvider>
+              ))}
+            </div>
 
-            <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
-                className="w-full px-4 py-2 border border-primary rounded text-sm font-medium text-primary hover:text-paper tracking-wider md:w-auto"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60 hover:text-white sm:w-auto"
                 onClick={addBox}
               >
                 Ajouter un texte
               </button>
 
               <button
-                className="flex items-center justify-center w-full gap-3 px-4 py-2 tracking-wider text-sm text-white hover:bg-primary-dark bg-gradient-to-r  from-fuchsia-500 via-fuchsia-500 to-pink-500 md:w-auto focus:outline-none"
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl sm:w-auto"
                 onClick={downloadMeme}
               >
-                <MdDownload className="text-white text-lg" />
-                <h4>Télécharger le Meme</h4>
+                <MdDownload className="text-lg" />
+                Télécharger
               </button>
             </div>
           </div>
