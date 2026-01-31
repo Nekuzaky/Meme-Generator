@@ -39,7 +39,7 @@ export default function OwnMeme() {
           <p className="text-sm font-semibold uppercase tracking-wide text-fuchsia-400">
             Ton image
           </p>
-          <h2 className="text-2xl font-semibold text-slate-100 md:text-3xl">
+          <h2 className="rgb-text text-2xl md:text-3xl">
             Crée un meme à partir de tes propres images
           </h2>
           <p className="text-sm text-slate-300 md:text-base">

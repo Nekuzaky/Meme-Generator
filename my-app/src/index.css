@@ -16,6 +16,29 @@
 	.glass-card {
 		@apply rounded-2xl border border-white/10 bg-slate-900/70 backdrop-blur shadow-xl shadow-fuchsia-500/10;
 	}
+
+	.rgb-text {
+		@apply font-semibold;
+		background: linear-gradient(90deg, #f472b6, #a78bfa, #22d3ee, #facc15, #f472b6);
+		background-size: 300% 100%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		animation: rgb-shift 6s linear infinite;
+		text-shadow: 0 0 12px rgba(244, 114, 182, 0.35);
+	}
+}
+
+@keyframes rgb-shift {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 
 

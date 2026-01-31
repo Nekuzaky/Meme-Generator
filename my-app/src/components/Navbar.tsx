@@ -7,7 +7,7 @@ export default function Navbar() {
             MG
           </div>
           <div>
-            <p className="text-lg font-semibold text-slate-100">
+            <p className="rgb-text text-lg">
               Générateur de memes
             </p>
             <p className="text-xs text-slate-300">
