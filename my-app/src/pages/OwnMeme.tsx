@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MdImage, MdInfo, MdLink, MdRefresh } from "react-icons/md";
 import MemeGenerator from "../components/MemeGenerator";
+import RecentMemes from "../components/RecentMemes";
+import { useRecentMemes } from "../hooks/useRecentMemes";
 
 export default function OwnMeme() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState("");
   const [imageLink, setImageLink] = useState("");
+  const { recentMemes, addRecentMeme, clearRecentMemes } = useRecentMemes(
+    "recent-memes-perso"
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -31,6 +36,16 @@ export default function OwnMeme() {
     setImageLink("");
     setImageName("");
   };
+
+  useEffect(() => {
+    if (!imageUrl) return;
+    addRecentMeme({
+      name: imageName || "meme-personnalise.png",
+      url: imageUrl,
+      source: "perso",
+      box_count: 2,
+    });
+  }, [imageUrl, imageName, addRecentMeme]);
 
   return (
     <section className="glass-card w-full p-6 md:p-8">
@@ -116,6 +131,16 @@ export default function OwnMeme() {
             Ajoute une image pour commencer à personnaliser ton meme.
           </div>
         )}
+
+        <RecentMemes
+          title="Historique des memes récents"
+          items={recentMemes}
+          onClear={clearRecentMemes}
+          onSelect={(item) => {
+            setImageUrl(item.url);
+            setImageName(item.name);
+          }}
+        />
       </div>
     </section>
   );

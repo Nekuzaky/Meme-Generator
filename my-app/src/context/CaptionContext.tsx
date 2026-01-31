@@ -6,6 +6,7 @@ export interface Caption {
   outline_color: string;
   fontFamily: string;
   fontSize: number;
+  effect: "none" | "arc" | "shake" | "outline" | "gradient";
 }
 
 interface ContextProps {
@@ -15,6 +16,7 @@ interface ContextProps {
   setOutlineColor: (outline_color: string) => void;
   setFontFamily: (font: string) => void;
   setFontSize: (size: number) => void;
+  setEffect: (effect: Caption["effect"]) => void;
 }
 
 const TEXT = "TEXT";
@@ -22,6 +24,7 @@ const COLOR = "COLOR";
 const OUTLINE_COLOR = "OUTLINE_COLOR";
 const FONT_FAMILY = "FONT_FAMILY";
 const FONT_SIZE = "FONT_SIZE";
+const EFFECT = "EFFECT";
 
 const captionReducer = (state: Caption, action: any) => {
   const { type, payload } = action;
@@ -36,6 +39,8 @@ const captionReducer = (state: Caption, action: any) => {
       return { ...state, fontFamily: payload };
     case FONT_SIZE:
       return { ...state, fontSize: payload };
+    case EFFECT:
+      return { ...state, effect: payload };
     default:
       return state;
   }
@@ -47,6 +52,7 @@ const initialState = {
   outline_color: "#222222",
   fontFamily: "impact",
   fontSize: 50,
+  effect: "none",
 };
 
 const CaptionContext = createContext({} as ContextProps);
@@ -69,6 +75,9 @@ export default function CaptionProvider({ children }: any) {
   const setFontSize = (size: number) => {
     dispatch({ type: FONT_SIZE, payload: size });
   };
+  const setEffect = (effect: Caption["effect"]) => {
+    dispatch({ type: EFFECT, payload: effect });
+  };
 
   return (
     <CaptionContext.Provider
@@ -79,6 +88,7 @@ export default function CaptionProvider({ children }: any) {
         setOutlineColor,
         setFontFamily,
         setFontSize,
+        setEffect,
       }}
     >
       {children}

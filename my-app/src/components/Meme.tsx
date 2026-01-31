@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import MemeGenerator from "../components/MemeGenerator";
+import RecentMemes from "./RecentMemes";
+import { useRecentMemes } from "../hooks/useRecentMemes";
 import type { Meme as MemeType } from "../types/types";
 
 const fallbackMeme: MemeType = {
@@ -14,6 +16,9 @@ export default function Meme() {
     const [currentMeme, setCurrentMeme] = useState<MemeType | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { recentMemes, addRecentMeme, clearRecentMemes } = useRecentMemes(
+        "recent-memes-tendance"
+    );
 
     useEffect(() => {
         const fetchData = async () => {
@@ -45,6 +50,17 @@ export default function Meme() {
     }, [memes, randomMeme]);
 
     const selectedMeme = currentMeme ?? fallbackMeme;
+
+    useEffect(() => {
+        if (!selectedMeme?.url) return;
+        addRecentMeme({
+            id: selectedMeme.id,
+            name: selectedMeme.name,
+            url: selectedMeme.url,
+            source: "tendance",
+            box_count: selectedMeme.box_count ?? 2,
+        });
+    }, [selectedMeme, addRecentMeme]);
 
     return (
         <section className="glass-card w-full p-6 md:p-8">
@@ -80,6 +96,19 @@ export default function Meme() {
                         imageUrl={selectedMeme.url}
                         box_count={selectedMeme.box_count ?? 2}
                         imageName={selectedMeme.name}
+                    />
+                    <RecentMemes
+                        title="Historique des memes récents"
+                        items={recentMemes}
+                        onClear={clearRecentMemes}
+                        onSelect={(item) =>
+                            setCurrentMeme({
+                                id: item.id ?? "recent",
+                                name: item.name,
+                                url: item.url,
+                                box_count: item.box_count ?? 2,
+                            })
+                        }
                     />
                 </div>
             )}
