@@ -150,6 +150,8 @@ const translations = {
     "image.alt": "Aperçu du meme",
     "error.generic":
       "Essaie de rafraîchir la page ou de vérifier ta connexion internet",
+    "ad.label": "Espace sponsorisé",
+    "ad.placeholder": "Votre annonce ici — discrète et non intrusive.",
   },
   en: {
     "brand.name": "Meme Creator",
@@ -296,6 +298,8 @@ const translations = {
     "image.alt": "Meme preview",
     "error.generic":
       "Try refreshing the page or checking your internet connection",
+    "ad.label": "Sponsored",
+    "ad.placeholder": "Your ad here — subtle and non-intrusive.",
   },
 };
 
