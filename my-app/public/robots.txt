@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://meme.altcore.fr/sitemap.xml
