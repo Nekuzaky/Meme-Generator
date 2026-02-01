@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { BiFont } from "react-icons/bi";
 import { fontStyles } from "../constants/constants";
 import { useCaption } from "../context/CaptionContext";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function FontStyle() {
+  const { t } = useLanguage();
   const { setFontFamily, setFontSize, state } = useCaption();
   const { fontSize, fontFamily } = state;
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +58,7 @@ export default function FontStyle() {
           className="absolute z-50 right-0 mt-2 rounded-xl border border-white/10 bg-slate-900/90 px-5 py-5 text-slate-100 shadow-xl shadow-fuchsia-500/10"
         >
           <div className="flex flex-col items-start">
-            <span className="text-sm text-slate-300">Font Family</span>
+            <span className="text-sm text-slate-300">{t("font.family")}</span>
             <select
               value={fontFamily}
               onChange={handleFontFamilyChange}
@@ -67,7 +69,7 @@ export default function FontStyle() {
           </div>
 
           <div className="mt-5 flex flex-col items-start">
-            <span className="text-sm text-slate-300">Font Size</span>
+            <span className="text-sm text-slate-300">{t("font.size")}</span>
             <input
               type="range"
               min="10"

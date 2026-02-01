@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { MdImage, MdInfo, MdLink, MdRefresh } from "react-icons/md";
 import MemeGenerator from "../components/MemeGenerator";
 import RecentMemes from "../components/RecentMemes";
+import { useLanguage } from "../context/LanguageContext";
 import { useRecentMemes } from "../hooks/useRecentMemes";
 
 export default function OwnMeme() {
+  const { t } = useLanguage();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState("");
   const [imageLink, setImageLink] = useState("");
@@ -52,13 +54,13 @@ export default function OwnMeme() {
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-fuchsia-400">
-            Ton image
+            {t("ownMeme.kicker")}
           </p>
           <h2 className="rgb-text text-2xl md:text-3xl">
-            Crée un meme à partir de tes propres images
+            {t("ownMeme.title")}
           </h2>
           <p className="text-sm text-slate-300 md:text-base">
-            Importe un fichier ou colle un lien direct, puis ajoute ton texte.
+            {t("ownMeme.description")}
           </p>
         </div>
         <button
@@ -66,7 +68,7 @@ export default function OwnMeme() {
           onClick={resetState}
         >
           <MdRefresh className="text-lg" />
-          Réinitialiser
+          {t("ownMeme.reset")}
         </button>
       </div>
 
@@ -75,9 +77,11 @@ export default function OwnMeme() {
           <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-slate-900/60 px-6 py-10 text-center transition hover:border-fuchsia-400/60">
             <MdImage className="text-3xl text-fuchsia-500" />
             <p className="text-sm font-semibold text-slate-100">
-              Dépose une image ou clique pour choisir un fichier
+              {t("ownMeme.drop")}
             </p>
-            <p className="text-xs text-slate-400">PNG, JPG, GIF</p>
+            <p className="text-xs text-slate-400">
+              {t("ownMeme.fileTypes")}
+            </p>
             <input
               className="hidden"
               type="file"
@@ -89,7 +93,7 @@ export default function OwnMeme() {
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
               <MdLink className="text-lg text-fuchsia-500" />
-              Utiliser un lien d’image
+              {t("ownMeme.useLink")}
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <input
@@ -102,7 +106,7 @@ export default function OwnMeme() {
                 className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
                 onClick={applyImageLink}
               >
-                Utiliser
+                {t("ownMeme.use")}
               </button>
             </div>
           </div>
@@ -112,11 +116,11 @@ export default function OwnMeme() {
           <div className="flex items-start gap-3">
             <MdInfo className="mt-0.5 text-xl text-fuchsia-500" />
             <div className="space-y-2">
-              <p className="font-semibold text-slate-100">Conseils rapides</p>
+              <p className="font-semibold text-slate-100">{t("ownMeme.tips")}</p>
               <ul className="list-disc space-y-1 pl-4">
-                <li>Privilégie des images en haute résolution.</li>
-                <li>Glisse les textes directement sur l’image.</li>
-                <li>Ajoute plusieurs zones pour plus d’impact.</li>
+                <li>{t("ownMeme.tip1")}</li>
+                <li>{t("ownMeme.tip2")}</li>
+                <li>{t("ownMeme.tip3")}</li>
               </ul>
             </div>
           </div>
@@ -128,12 +132,12 @@ export default function OwnMeme() {
           <MemeGenerator imageUrl={imageUrl} box_count={2} imageName={imageName} />
         ) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/60 px-6 py-10 text-center text-sm text-slate-400">
-            Ajoute une image pour commencer à personnaliser ton meme.
+            {t("ownMeme.empty")}
           </div>
         )}
 
         <RecentMemes
-          title="Historique des memes récents"
+          title={t("recent.title")}
           items={recentMemes}
           onClear={clearRecentMemes}
           onSelect={(item) => {

@@ -1,4 +1,5 @@
 import type { RecentMeme } from "../types/types";
+import { useLanguage } from "../context/LanguageContext";
 
 interface Props {
   title: string;
@@ -8,6 +9,13 @@ interface Props {
 }
 
 export default function RecentMemes({ title, items, onSelect, onClear }: Props) {
+  const { t } = useLanguage();
+  const getSourceLabel = (source?: string) => {
+    if (source === "tendance") return t("recent.source.trending");
+    if (source === "perso") return t("recent.source.custom");
+    return source ?? "";
+  };
+
   return (
     <div className="mt-8 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
       <div className="flex items-center justify-between">
@@ -17,13 +25,13 @@ export default function RecentMemes({ title, items, onSelect, onClear }: Props) 
           onClick={onClear}
           className="text-xs font-semibold text-slate-300 transition hover:text-white"
         >
-          Effacer
+          {t("recent.clear")}
         </button>
       </div>
 
       {items.length === 0 ? (
         <p className="mt-3 text-xs text-slate-400">
-          Aucun meme récent pour le moment.
+          {t("recent.empty")}
         </p>
       ) : (
         <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
@@ -46,7 +54,7 @@ export default function RecentMemes({ title, items, onSelect, onClear }: Props) 
               </p>
               {item.source && (
                 <span className="text-[10px] uppercase tracking-wide text-slate-400">
-                  {item.source}
+                  {getSourceLabel(item.source)}
                 </span>
               )}
             </button>

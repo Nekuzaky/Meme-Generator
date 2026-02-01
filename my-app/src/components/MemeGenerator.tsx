@@ -4,6 +4,7 @@ import { saveAs } from "file-saver";
 import { useEffect, useState } from "react";
 import { stickerOptions } from "../constants/constants";
 import CaptionProvider from "../context/CaptionContext";
+import { useLanguage } from "../context/LanguageContext";
 import Caption from "./Caption";
 import ImageSection from "./ImageSection";
 
@@ -18,6 +19,7 @@ export default function MemeGenerator({
   box_count,
   imageName,
 }: IProps) {
+  const { t } = useLanguage();
   const [boxesCount, setBoxesCount] = useState(box_count);
   const [stickers, setStickers] = useState<
     { id: string; emoji: string; x: number; y: number; size: number }[]
@@ -108,7 +110,7 @@ export default function MemeGenerator({
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60 hover:text-white sm:w-auto"
                 onClick={addBox}
               >
-                Ajouter un texte
+                {t("generator.addText")}
               </button>
 
               <button
@@ -116,20 +118,20 @@ export default function MemeGenerator({
                 onClick={downloadMeme}
               >
                 <MdDownload className="text-lg" />
-                Télécharger
+                {t("generator.download")}
               </button>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-100">
-                  Stickers & emojis
+                  {t("generator.stickers")}
                 </p>
                 <button
                   className="text-xs font-semibold text-slate-300 transition hover:text-white"
                   onClick={clearStickers}
                 >
-                  Tout retirer
+                  {t("generator.clearStickers")}
                 </button>
               </div>
 
@@ -155,7 +157,7 @@ export default function MemeGenerator({
                       onClick={() => removeSticker(sticker.id)}
                       className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:border-rose-400/70 hover:text-white"
                     >
-                      Retirer {sticker.emoji}
+                      {t("generator.removeSticker", { emoji: sticker.emoji })}
                     </button>
                   ))}
                 </div>

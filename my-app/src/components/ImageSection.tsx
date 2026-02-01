@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Rnd } from "react-rnd";
 import { useMeme } from "../context/MemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import type { TextEffect } from "../types/types";
 
 interface IProps {
@@ -16,6 +17,7 @@ interface IProps {
 }
 
 export default function ImageSection({ image, stickers = [], onStickerChange }: IProps) {
+  const { t } = useLanguage();
   const { boxes, clearBoxes } = useMeme();
 
   const getTop = (index: number) => 70 * index;
@@ -92,7 +94,7 @@ export default function ImageSection({ image, stickers = [], onStickerChange }: 
     >
       <img
         src={image}
-        alt="memeImage"
+        alt={t("image.alt")}
         className="relative h-full w-full object-contain"
       />
 

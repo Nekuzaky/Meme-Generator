@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useCaption } from "../context/CaptionContext";
 import { useMeme } from "../context/MemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import { stylePresets } from "../constants/constants";
 import Color from "./Color";
 import FontStyle from "./FontStyle";
@@ -11,6 +12,7 @@ interface IProps {
 }
 
 export default function Caption({ index }: IProps) {
+  const { t } = useLanguage();
   const { changeBoxes } = useMeme();
   const {
     state,
@@ -44,7 +46,7 @@ export default function Caption({ index }: IProps) {
 
       <div className="mt-4 flex w-full flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Presets
+          {t("caption.presets")}
         </span>
         {stylePresets.map((preset) => (
           <button
@@ -60,18 +62,18 @@ export default function Caption({ index }: IProps) {
 
       <div className="mt-3 flex w-full items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Effet
+          {t("caption.effect")}
         </span>
         <select
           value={state.effect}
           onChange={(e) => setEffect(e.target.value as typeof state.effect)}
           className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-100 focus:outline-none focus:border-fuchsia-400/80"
         >
-          <option value="none">Aucun</option>
-          <option value="arc">Arc</option>
-          <option value="shake">Shake</option>
-          <option value="outline">Contour épais</option>
-          <option value="gradient">Dégradé</option>
+          <option value="none">{t("caption.effect.none")}</option>
+          <option value="arc">{t("caption.effect.arc")}</option>
+          <option value="shake">{t("caption.effect.shake")}</option>
+          <option value="outline">{t("caption.effect.outline")}</option>
+          <option value="gradient">{t("caption.effect.gradient")}</option>
         </select>
       </div>
     </div>

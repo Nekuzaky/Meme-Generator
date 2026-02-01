@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import MemeGenerator from "../components/MemeGenerator";
 import RecentMemes from "./RecentMemes";
+import { useLanguage } from "../context/LanguageContext";
 import { useRecentMemes } from "../hooks/useRecentMemes";
 import type { Meme as MemeType } from "../types/types";
 
-const fallbackMeme: MemeType = {
-    id: "fallback",
-    name: "Meme par défaut",
-    url: "https://i.imgflip.com/64sz4u.png",
-    box_count: 2,
-};
-
 export default function Meme() {
+    const { t } = useLanguage();
+    const fallbackMeme: MemeType = {
+        id: "fallback",
+        name: t("meme.fallback"),
+        url: "https://i.imgflip.com/64sz4u.png",
+        box_count: 2,
+    };
     const [memes, setMemes] = useState<MemeType[]>([]);
     const [currentMeme, setCurrentMeme] = useState<MemeType | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -28,14 +29,20 @@ export default function Meme() {
                 const data = await res.json();
                 setMemes(data.data.memes || []);
             } catch (err) {
-                setError("Impossible de récupérer la liste des memes.");
+                setError(t("meme.error"));
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchData();
-    }, []);
+    }, [t]);
+
+    useEffect(() => {
+        if (error) {
+            setError(t("meme.error"));
+        }
+    }, [t, error]);
 
     const randomMeme = useCallback(() => {
         if (!memes.length) return;
@@ -67,14 +74,13 @@ export default function Meme() {
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-2">
                     <p className="text-sm font-semibold uppercase tracking-wide text-fuchsia-400">
-                        Memes tendance
+                        {t("meme.kicker")}
                     </p>
                     <h2 className="rgb-text text-2xl md:text-3xl">
-                        Pioche un meme aléatoire et personnalise-le
+                        {t("meme.title")}
                     </h2>
                     <p className="text-sm text-slate-300 md:text-base">
-                        Sélection aléatoire du top 100. Ajoute tes textes, bouge-les et
-                        télécharge le résultat.
+                        {t("meme.description")}
                     </p>
                 </div>
                 <button
@@ -82,7 +88,7 @@ export default function Meme() {
                     onClick={randomMeme}
                     disabled={isLoading}
                 >
-                    {isLoading ? "Chargement..." : "Générer un meme"}
+                    {isLoading ? t("meme.loading") : t("meme.generate")}
                 </button>
             </div>
 
@@ -98,7 +104,7 @@ export default function Meme() {
                         imageName={selectedMeme.name}
                     />
                     <RecentMemes
-                        title="Historique des memes récents"
+                        title={t("recent.title")}
                         items={recentMemes}
                         onClear={clearRecentMemes}
                         onSelect={(item) =>
