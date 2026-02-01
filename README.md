@@ -4,6 +4,16 @@ Projet réalisé pour mon examen de fin d’année (2e année) à l’IFAPME en 
 
 Crée un meme à partir d’images tendance ou de tes propres visuels, puis partage‑le 🚀.
 
+## FR / EN 🌍
+
+**Français (principal)**
+- Voir les sections ci‑dessous.
+
+**English (summary)**
+- Final‑year exam project (2nd year, IFAPME Web Developer).
+- Create memes from trending templates or your own images.
+- Features include image editor, social templates, stickers, layers, exports, QR sharing, and dark/light theme.
+
 <img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white "/>
 
 ## Stack 🧰
