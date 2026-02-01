@@ -6,17 +6,38 @@ import type { TextEffect } from "../types/types";
 
 interface IProps {
   image: string;
+  textLayers?: { id: string; index: number; locked: boolean; zIndex: number }[];
+  selectedLayer?:
+    | { type: "text"; id: string; index: number }
+    | { type: "sticker"; id: string }
+    | null;
   stickers?: {
     id: string;
-    emoji: string;
+    emoji?: string;
+    src?: string;
+    kind: "emoji" | "image";
     x: number;
     y: number;
     size: number;
+    locked: boolean;
+    zIndex: number;
   }[];
   onStickerChange?: (id: string, position: { x: number; y: number }, size: number) => void;
+  onSelectText?: (index: number) => void;
+  onSelectSticker?: (id: string) => void;
+  grid?: [number, number];
 }
 
-export default function ImageSection({ image, stickers = [], onStickerChange }: IProps) {
+export default function ImageSection({
+  image,
+  textLayers = [],
+  stickers = [],
+  selectedLayer,
+  onStickerChange,
+  onSelectText,
+  onSelectSticker,
+  grid,
+}: IProps) {
   const { t } = useLanguage();
   const { boxes, clearBoxes } = useMeme();
 
@@ -100,23 +121,37 @@ export default function ImageSection({ image, stickers = [], onStickerChange }: 
 
       {boxes !== undefined &&
         boxes.map(
-          ({ outline_color, color, fontFamily, fontSize, text, effect }, index) => (
-            <Rnd
-              style={getStyle(outline_color, color, fontFamily, fontSize, effect)}
-              default={
-                {
-                  x: 20,
-                  y: getTop(index),
-                } as any
-              }
-              key={index}
-              bounds="#downloadMeme"
-            >
-              <span className={effect === "shake" ? "text-shake" : undefined}>
-                {effect === "arc" ? renderArcText(text) : text}
-              </span>
-            </Rnd>
-          )
+          ({ outline_color, color, fontFamily, fontSize, text, effect }, index) => {
+            const layer = textLayers.find((item) => item.index === index);
+            const isLocked = layer?.locked ?? false;
+            const isSelected = selectedLayer?.type === "text" && selectedLayer.index === index;
+            return (
+              <Rnd
+                style={{
+                  ...getStyle(outline_color, color, fontFamily, fontSize, effect),
+                  zIndex: layer?.zIndex ?? 1,
+                  outline: isSelected ? "2px solid rgba(244,114,182,0.6)" : undefined,
+                }}
+                default={
+                  {
+                    x: 20,
+                    y: getTop(index),
+                  } as any
+                }
+                key={index}
+                bounds="#downloadMeme"
+                disableDragging={isLocked}
+                enableResizing={!isLocked}
+                dragGrid={grid}
+                resizeGrid={grid}
+                onClick={() => onSelectText?.(index)}
+              >
+                <span className={effect === "shake" ? "text-shake" : undefined}>
+                  {effect === "arc" ? renderArcText(text) : text}
+                </span>
+              </Rnd>
+            );
+          }
         )}
 
       {stickers.map((sticker) => (
@@ -136,10 +171,29 @@ export default function ImageSection({ image, stickers = [], onStickerChange }: 
             )
           }
           lockAspectRatio
-          enableResizing
+          enableResizing={!sticker.locked}
+          disableDragging={sticker.locked}
+          style={{
+            zIndex: sticker.zIndex,
+            outline:
+              selectedLayer?.type === "sticker" && selectedLayer.id === sticker.id
+                ? "2px solid rgba(244,114,182,0.6)"
+                : undefined,
+          }}
+          dragGrid={grid}
+          resizeGrid={grid}
+          onClick={() => onSelectSticker?.(sticker.id)}
         >
-          <div className="flex h-full w-full items-center justify-center text-3xl">
-            {sticker.emoji}
+          <div className="flex h-full w-full items-center justify-center">
+            {sticker.kind === "image" && sticker.src ? (
+              <img
+                src={sticker.src}
+                alt="sticker"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-3xl">{sticker.emoji}</span>
+            )}
           </div>
         </Rnd>
       ))}

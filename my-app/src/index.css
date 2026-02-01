@@ -10,6 +10,18 @@
 	body {
 		@apply bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 min-h-screen;
 	}
+
+	.theme-light body {
+		@apply bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900;
+	}
+
+	.theme-light .glass-card {
+		@apply border-slate-200 bg-white/80 shadow-lg shadow-slate-200/50;
+	}
+
+	.theme-light .rgb-text {
+		text-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+	}
 }
 
 @layer components {

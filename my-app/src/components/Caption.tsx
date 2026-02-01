@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useCaption } from "../context/CaptionContext";
 import { useMeme } from "../context/MemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -22,11 +22,33 @@ export default function Caption({ index }: IProps) {
     setFontSize,
     setEffect,
   } = useCaption();
+  const [palette, setPalette] = useState<{ fill: string[]; outline: string[] }>({
+    fill: [],
+    outline: [],
+  });
 
   useEffect(() => {
     changeBoxes({ ...state, index });
     // eslint-disable-next-line
   }, [state]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("meme-creator-palette");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as { fill: string[]; outline: string[] };
+      setPalette({
+        fill: parsed.fill ?? [],
+        outline: parsed.outline ?? [],
+      });
+    } catch {
+      setPalette({ fill: [], outline: [] });
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("meme-creator-palette", JSON.stringify(palette));
+  }, [palette]);
 
   const applyPreset = (preset: (typeof stylePresets)[number]) => {
     setFontFamily(preset.fontFamily);
@@ -35,9 +57,23 @@ export default function Caption({ index }: IProps) {
     setOutlineColor(preset.outline_color);
   };
 
+  const saveFill = () => {
+    setPalette((prev) => ({
+      ...prev,
+      fill: Array.from(new Set([state.color, ...prev.fill])).slice(0, 8),
+    }));
+  };
+
+  const saveOutline = () => {
+    setPalette((prev) => ({
+      ...prev,
+      outline: Array.from(new Set([state.outline_color, ...prev.outline])).slice(0, 8),
+    }));
+  };
+
   return (
     <div className="container mb-10 flex flex-col items-start justify-start">
-      <div className="flex w-full items-center gap-3 md:w-4/5 md:gap-5">
+      <div className="flex w-full flex-wrap items-center gap-3 md:w-4/5 md:flex-nowrap md:gap-5">
         <Text index={index} />
         <Color type="fill" />
         <Color type="border" />
@@ -75,6 +111,52 @@ export default function Caption({ index }: IProps) {
           <option value="outline">{t("caption.effect.outline")}</option>
           <option value="gradient">{t("caption.effect.gradient")}</option>
         </select>
+      </div>
+
+      <div className="mt-4 flex w-full flex-col gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {t("palette.title")}
+        </span>
+        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+          <span className="text-slate-400">{t("palette.fill")}</span>
+          {palette.fill.map((color) => (
+            <button
+              key={`fill-${color}`}
+              type="button"
+              onClick={() => setColor(color)}
+              className="h-5 w-5 rounded-full border border-white/10"
+              style={{ backgroundColor: color }}
+              aria-label={color}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={saveFill}
+            className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-slate-200"
+          >
+            {t("palette.save")}
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+          <span className="text-slate-400">{t("palette.outline")}</span>
+          {palette.outline.map((color) => (
+            <button
+              key={`outline-${color}`}
+              type="button"
+              onClick={() => setOutlineColor(color)}
+              className="h-5 w-5 rounded-full border border-white/10"
+              style={{ backgroundColor: color }}
+              aria-label={color}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={saveOutline}
+            className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-slate-200"
+          >
+            {t("palette.save")}
+          </button>
+        </div>
       </div>
     </div>
   );
