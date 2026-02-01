@@ -10,6 +10,8 @@
 my-app/node_modules
 my-app/build
 .github
+.github/workflows
+github
 # production
 /build
 

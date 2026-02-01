@@ -1,34 +1,33 @@
 
-# React Meme Generator
-Crée un meme à partir d'une image aleatoires.
+# Meme Creator
+Projet réalisé pour mon examen de fin d’année (2e année) à l’IFAPME en développeur web.
+
+Crée un meme à partir d’images tendance ou de tes propres visuels, puis partage-le.
 
 <img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white "/>
 
-## GUIDES
+## Stack
 
-**Client:** React, TypeScript, TailwindCSS
+**Client :** React, TypeScript, TailwindCSS, Vite
 
 
 ## Préview de l'application
 
-View the site from the [https://meme.altcore.fr/](https://meme.altcore.fr/) 
+Voir le site : [https://meme.altcore.fr/](https://meme.altcore.fr/)
 
 
-## Features
+## Fonctionnalités
 
-Afficher des modèles de meme depuis l'API Imgflip : Utilisez une requête HTTP pour récupérer les modèles de meme depuis l'API Imgflip et affichez-les dans une grille ou une liste. Vous pouvez utiliser une bibliothèque de gestion d'état comme Redux pour stocker les modèles de meme.
-
-Rechercher des modèles : Ajoutez un champ de recherche qui permet aux utilisateurs de rechercher des modèles de meme en fonction de leur nom ou de leur tag.
-
-Ajouter du texte aux images : Utilisez une bibliothèque JavaScript comme Fabric.js pour permettre aux utilisateurs d'ajouter du texte à l'image de meme. Vous pouvez utiliser des contrôles de formulaire pour permettre aux utilisateurs de modifier les attributs de texte tels que la police, la taille et la couleur.
-
-Déplacer le texte sur l'image : Utilisez les fonctionnalités de Fabric.js pour permettre aux utilisateurs de faire glisser le texte sur l'image.
-
-Ajouter plusieurs textes : Permettez aux utilisateurs d'ajouter plusieurs textes en cliquant sur un bouton "Ajouter du texte" ou en utilisant un menu contextuel.
-
-Télécharger le meme finalisé : Utilisez la bibliothèque FileSaver.js pour permettre aux utilisateurs de télécharger le meme finalisé en tant que fichier image.
-
-Créer un meme en téléchargeant des images de bureau ou en insérant une URL d'image : Utilisez l'élément input de type "file" pour permettre aux utilisateurs de télécharger des images de bureau. Pour les images provenant d'URL, utilisez une bibliothèque JavaScript comme Axios pour récupérer l'image à partir de l'URL.
+- Génération de memes tendance via l’API Imgflip.
+- Création de memes depuis une image locale ou un lien direct.
+- Éditeur d’images avec réglages (luminosité, contraste, rotation, zoom, etc.).
+- Templates réseaux (story, post carré, paysage, bannière) + export auto.
+- Texte glisser‑déposer, stickers, effets, presets et palette sauvegardée.
+- Calques (ordre + verrouillage) et grille d’alignement.
+- Upload de stickers personnalisés.
+- Import/Export de projets en JSON + autosave & brouillons.
+- Partage par lien + QR code (généré localement).
+- Thème clair/sombre et interface FR/EN.
 
 
 
@@ -53,7 +52,7 @@ npm install
 **Step 4: Lancer le projet** 
 
 ```bash
-npm start
+npm run dev
 ```
 **Step 5: Exporter le projet** 
 
@@ -63,7 +62,7 @@ npm run build
 
 ## API Reference
 
-Imgflip API is used to fetch all the meme templates. It returns an array of 100 meme templates.
+L’API Imgflip est utilisée pour récupérer les templates de memes (100 templates).
 
 #### Get all meme templates
 
