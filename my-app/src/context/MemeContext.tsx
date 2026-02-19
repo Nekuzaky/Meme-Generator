@@ -8,6 +8,8 @@ interface ContextProps {
   isLoading: boolean;
   isError: boolean;
   changeBoxes: ({ index, ...params }: Box) => void;
+  replaceBoxes: (nextBoxes: Box[]) => void;
+  removeBox: (index: number) => void;
   fetchMemes: () => Promise<void>;
   clearBoxes: () => void;
   query: string;
@@ -41,7 +43,7 @@ export default function MemeProvider({ children }: any) {
         return meme.name.match(regex);
       })
     );
-  }, [query]);
+  }, [query, allMemes]);
 
   const fetchMemes = async () => {
     setIsLoading(true);
@@ -63,11 +65,24 @@ export default function MemeProvider({ children }: any) {
   };
 
   const changeBoxes = ({ index, ...params }: Box) => {
-    setBoxes(
+    setBoxes((prev) =>
       [
-        ...boxes.filter((box) => box.index !== index),
+        ...prev.filter((box) => box.index !== index),
         { index, ...params },
       ].sort(sortBoxes)
+    );
+  };
+
+  const replaceBoxes = (nextBoxes: Box[]) => {
+    setBoxes([...nextBoxes].sort(sortBoxes));
+  };
+
+  const removeBox = (index: number) => {
+    setBoxes((prev) =>
+      prev
+        .filter((box) => box.index !== index)
+        .sort(sortBoxes)
+        .map((box, nextIndex) => ({ ...box, index: nextIndex }))
     );
   };
 
@@ -83,6 +98,8 @@ export default function MemeProvider({ children }: any) {
         isLoading,
         isError,
         changeBoxes,
+        replaceBoxes,
+        removeBox,
         fetchMemes,
         clearBoxes,
         query,

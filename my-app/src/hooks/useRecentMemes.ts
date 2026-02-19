@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RecentMeme } from "../types/types";
 
 const isPersistableUrl = (url: string) => !url.startsWith("blob:");
@@ -17,7 +17,7 @@ export const useRecentMemes = (storageKey: string, limit = 8) => {
     }
   }, [storageKey]);
 
-  const addRecentMeme = (item: RecentMeme) => {
+  const addRecentMeme = useCallback((item: RecentMeme) => {
     setRecentMemes((prev) => {
       const next = [item, ...prev.filter((meme) => meme.url !== item.url)].slice(
         0,
@@ -28,16 +28,16 @@ export const useRecentMemes = (storageKey: string, limit = 8) => {
       localStorage.setItem(storageKey, JSON.stringify(persistable));
       return next;
     });
-  };
+  }, [limit, storageKey]);
 
-  const clearRecentMemes = () => {
+  const clearRecentMemes = useCallback(() => {
     setRecentMemes([]);
     localStorage.removeItem(storageKey);
-  };
+  }, [storageKey]);
 
   const value = useMemo(
     () => ({ recentMemes, addRecentMeme, clearRecentMemes }),
-    [recentMemes]
+    [recentMemes, addRecentMeme, clearRecentMemes]
   );
 
   return value;

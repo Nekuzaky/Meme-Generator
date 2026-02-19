@@ -1,4 +1,6 @@
-import { createContext, useContext, useReducer } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import { useMeme } from "./MemeContext";
+import type { Box } from "../types/types";
 
 export interface Caption {
   text: string;
@@ -25,6 +27,7 @@ const OUTLINE_COLOR = "OUTLINE_COLOR";
 const FONT_FAMILY = "FONT_FAMILY";
 const FONT_SIZE = "FONT_SIZE";
 const EFFECT = "EFFECT";
+const RESET = "RESET";
 
 const captionReducer = (state: Caption, action: any) => {
   const { type, payload } = action;
@@ -41,12 +44,14 @@ const captionReducer = (state: Caption, action: any) => {
       return { ...state, fontSize: payload };
     case EFFECT:
       return { ...state, effect: payload };
+    case RESET:
+      return { ...payload };
     default:
       return state;
   }
 };
 
-const initialState = {
+const initialState: Caption = {
   text: "",
   color: "#ffffff",
   outline_color: "#222222",
@@ -55,10 +60,43 @@ const initialState = {
   effect: "none",
 };
 
+const toCaptionState = (box?: Partial<Box>): Caption => ({
+  text: box?.text ?? initialState.text,
+  color: box?.color ?? initialState.color,
+  outline_color: box?.outline_color ?? initialState.outline_color,
+  fontFamily: box?.fontFamily ?? initialState.fontFamily,
+  fontSize: box?.fontSize ?? initialState.fontSize,
+  effect: box?.effect ?? initialState.effect,
+});
+
 const CaptionContext = createContext({} as ContextProps);
 
-export default function CaptionProvider({ children }: any) {
-  const [state, dispatch] = useReducer(captionReducer, initialState);
+interface CaptionProviderProps {
+  children: React.ReactNode;
+  index: number;
+}
+
+export default function CaptionProvider({ children, index }: CaptionProviderProps) {
+  const { boxes } = useMeme();
+  const boxForIndex = useMemo(
+    () => boxes.find((item) => item.index === index),
+    [boxes, index]
+  );
+  const [state, dispatch] = useReducer(captionReducer, toCaptionState(boxForIndex));
+
+  useEffect(() => {
+    const nextState = toCaptionState(boxForIndex);
+    const hasDiff =
+      state.text !== nextState.text ||
+      state.color !== nextState.color ||
+      state.outline_color !== nextState.outline_color ||
+      state.fontFamily !== nextState.fontFamily ||
+      state.fontSize !== nextState.fontSize ||
+      state.effect !== nextState.effect;
+    if (hasDiff) {
+      dispatch({ type: RESET, payload: nextState });
+    }
+  }, [boxForIndex, state]);
 
   const setText = (text: string) => {
     dispatch({ type: TEXT, payload: text });

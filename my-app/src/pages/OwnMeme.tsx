@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MdImage, MdInfo, MdLink, MdRefresh } from "react-icons/md";
 import MemeGenerator from "../components/MemeGenerator";
 import RecentMemes from "../components/RecentMemes";
@@ -10,15 +10,34 @@ export default function OwnMeme() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState("");
   const [imageLink, setImageLink] = useState("");
+  const objectUrlRef = useRef<string | null>(null);
   const { recentMemes, addRecentMeme, clearRecentMemes } = useRecentMemes(
     "recent-memes-perso"
   );
 
+  const releaseObjectUrl = (nextUrl?: string) => {
+    const current = objectUrlRef.current;
+    if (current && current !== nextUrl) {
+      URL.revokeObjectURL(current);
+      objectUrlRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      releaseObjectUrl();
+    };
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
+      releaseObjectUrl();
+      const nextUrl = URL.createObjectURL(files[0]);
+      objectUrlRef.current = nextUrl;
       setImageName(files[0].name);
-      setImageUrl(URL.createObjectURL(files[0]));
+      setImageUrl(nextUrl);
+      setImageLink("");
     }
   };
 
@@ -29,11 +48,13 @@ export default function OwnMeme() {
   const applyImageLink = () => {
     const trimmed = imageLink.trim();
     if (!trimmed) return;
+    releaseObjectUrl();
     setImageUrl(trimmed);
     setImageName("meme-personnalise.png");
   };
 
   const resetState = () => {
+    releaseObjectUrl();
     setImageUrl(null);
     setImageLink("");
     setImageName("");
@@ -64,6 +85,7 @@ export default function OwnMeme() {
           </p>
         </div>
         <button
+          type="button"
           className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60"
           onClick={resetState}
         >
@@ -103,6 +125,7 @@ export default function OwnMeme() {
                 onChange={handleImageLink}
               />
               <button
+                type="button"
                 className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
                 onClick={applyImageLink}
               >
@@ -141,8 +164,10 @@ export default function OwnMeme() {
           items={recentMemes}
           onClear={clearRecentMemes}
           onSelect={(item) => {
+            releaseObjectUrl(item.url);
             setImageUrl(item.url);
             setImageName(item.name);
+            setImageLink(item.url.startsWith("http") ? item.url : "");
           }}
         />
       </div>

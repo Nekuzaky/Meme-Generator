@@ -5,10 +5,20 @@
 @layer base {
 	html {
 		font-family: "Open Sans", system-ui, sans-serif;
+		scroll-behavior: smooth;
 	}
 
 	body {
 		@apply bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 min-h-screen;
+	}
+
+	*:focus-visible {
+		outline: 2px solid rgba(217, 70, 239, 0.9);
+		outline-offset: 2px;
+	}
+
+	.theme-light *:focus-visible {
+		outline-color: rgba(190, 24, 93, 0.9);
 	}
 
 	.theme-light body {
@@ -27,6 +37,25 @@
 @layer components {
 	.glass-card {
 		@apply rounded-2xl border border-white/10 bg-slate-900/70 backdrop-blur shadow-xl shadow-fuchsia-500/10;
+	}
+
+	.skip-link {
+		position: fixed;
+		left: 1rem;
+		top: -100%;
+		z-index: 100;
+		border-radius: 0.75rem;
+		border: 1px solid rgba(236, 72, 153, 0.45);
+		background: rgba(15, 23, 42, 0.95);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #fff;
+		transition: top 0.2s ease;
+	}
+
+	.skip-link:focus {
+		top: 1rem;
 	}
 
 	.rgb-text {
@@ -72,6 +101,22 @@
 	}
 	100% {
 		transform: translate(0, 0) rotate(0deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.rgb-text,
+	.text-shake {
+		animation: none !important;
 	}
 }
 

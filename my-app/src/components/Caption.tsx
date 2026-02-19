@@ -9,9 +9,11 @@ import Text from "./Text";
 
 interface IProps {
   index: number;
+  onRemove?: () => void;
+  canRemove?: boolean;
 }
 
-export default function Caption({ index }: IProps) {
+export default function Caption({ index, onRemove, canRemove = false }: IProps) {
   const { t } = useLanguage();
   const { changeBoxes } = useMeme();
   const {
@@ -73,6 +75,20 @@ export default function Caption({ index }: IProps) {
 
   return (
     <div className="container mb-10 flex flex-col items-start justify-start">
+      <div className="mb-3 flex w-full items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {t("layers.text", { index: index + 1 })}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:border-rose-400/70 hover:text-white"
+          >
+            {t("generator.removeText")}
+          </button>
+        )}
+      </div>
       <div className="flex w-full flex-wrap items-center gap-3 md:w-4/5 md:flex-nowrap md:gap-5">
         <Text index={index} />
         <Color type="fill" />

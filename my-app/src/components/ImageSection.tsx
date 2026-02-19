@@ -6,11 +6,21 @@ import type { TextEffect } from "../types/types";
 
 interface IProps {
   image: string;
-  textLayers?: { id: string; index: number; locked: boolean; zIndex: number }[];
+  textLayers?: {
+    id: string;
+    index: number;
+    locked: boolean;
+    zIndex: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[];
   selectedLayer?:
     | { type: "text"; id: string; index: number }
     | { type: "sticker"; id: string }
     | null;
+  showSelectionOutline?: boolean;
   stickers?: {
     id: string;
     emoji?: string;
@@ -23,8 +33,13 @@ interface IProps {
     zIndex: number;
   }[];
   onStickerChange?: (id: string, position: { x: number; y: number }, size: number) => void;
+  onTextLayerChange?: (
+    id: string,
+    values: { x: number; y: number; width: number; height: number }
+  ) => void;
   onSelectText?: (index: number) => void;
   onSelectSticker?: (id: string) => void;
+  onClearSelection?: () => void;
   grid?: [number, number];
 }
 
@@ -33,15 +48,52 @@ export default function ImageSection({
   textLayers = [],
   stickers = [],
   selectedLayer,
+  showSelectionOutline = false,
   onStickerChange,
+  onTextLayerChange,
   onSelectText,
   onSelectSticker,
+  onClearSelection,
   grid,
 }: IProps) {
   const { t } = useLanguage();
   const { boxes, clearBoxes } = useMeme();
 
   const getTop = (index: number) => 70 * index;
+  const resizeHandleStyles = {
+    bottomRight: {
+      width: "20px",
+      height: "20px",
+      right: "-8px",
+      bottom: "-8px",
+      borderRadius: "999px",
+      background: "rgba(244, 114, 182, 0.85)",
+    },
+    bottomLeft: {
+      width: "20px",
+      height: "20px",
+      left: "-8px",
+      bottom: "-8px",
+      borderRadius: "999px",
+      background: "rgba(244, 114, 182, 0.85)",
+    },
+    topRight: {
+      width: "20px",
+      height: "20px",
+      right: "-8px",
+      top: "-8px",
+      borderRadius: "999px",
+      background: "rgba(244, 114, 182, 0.85)",
+    },
+    topLeft: {
+      width: "20px",
+      height: "20px",
+      left: "-8px",
+      top: "-8px",
+      borderRadius: "999px",
+      background: "rgba(244, 114, 182, 0.85)",
+    },
+  };
 
   const getBorder = (color: string, thickness = 2) => {
     const t = thickness;
@@ -112,6 +164,18 @@ export default function ImageSection({
     <div
       className="relative mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-lg shadow-fuchsia-500/10"
       id="downloadMeme"
+      onMouseDown={(event) => {
+        const target = event.target as HTMLElement;
+        if (target === event.currentTarget || target.tagName === "IMG") {
+          onClearSelection?.();
+        }
+      }}
+      onTouchStart={(event) => {
+        const target = event.target as HTMLElement;
+        if (target === event.currentTarget || target.tagName === "IMG") {
+          onClearSelection?.();
+        }
+      }}
     >
       <img
         src={image}
@@ -125,26 +189,46 @@ export default function ImageSection({
             const layer = textLayers.find((item) => item.index === index);
             const isLocked = layer?.locked ?? false;
             const isSelected = selectedLayer?.type === "text" && selectedLayer.index === index;
+            const x = layer?.x ?? 20;
+            const y = layer?.y ?? getTop(index);
+            const width = layer?.width ?? 220;
+            const height = layer?.height ?? 110;
             return (
               <Rnd
+                size={{ width, height }}
+                position={{ x, y }}
                 style={{
                   ...getStyle(outline_color, color, fontFamily, fontSize, effect),
                   zIndex: layer?.zIndex ?? 1,
-                  outline: isSelected ? "2px solid rgba(244,114,182,0.6)" : undefined,
+                  outline:
+                    showSelectionOutline && isSelected
+                      ? "2px solid rgba(244,114,182,0.6)"
+                      : undefined,
+                  touchAction: "none",
                 }}
-                default={
-                  {
-                    x: 20,
-                    y: getTop(index),
-                  } as any
-                }
                 key={index}
                 bounds="#downloadMeme"
                 disableDragging={isLocked}
                 enableResizing={!isLocked}
+                minWidth={96}
+                minHeight={52}
+                resizeHandleStyles={resizeHandleStyles}
                 dragGrid={grid}
                 resizeGrid={grid}
                 onClick={() => onSelectText?.(index)}
+                onDragStop={(_, data) => {
+                  if (!layer) return;
+                  onTextLayerChange?.(layer.id, { x: data.x, y: data.y, width, height });
+                }}
+                onResizeStop={(_, __, ref, ___, position) => {
+                  if (!layer) return;
+                  onTextLayerChange?.(layer.id, {
+                    x: position.x,
+                    y: position.y,
+                    width: ref.offsetWidth,
+                    height: ref.offsetHeight,
+                  });
+                }}
               >
                 <span className={effect === "shake" ? "text-shake" : undefined}>
                   {effect === "arc" ? renderArcText(text) : text}
@@ -173,12 +257,18 @@ export default function ImageSection({
           lockAspectRatio
           enableResizing={!sticker.locked}
           disableDragging={sticker.locked}
+          minWidth={48}
+          minHeight={48}
+          resizeHandleStyles={resizeHandleStyles}
           style={{
             zIndex: sticker.zIndex,
             outline:
-              selectedLayer?.type === "sticker" && selectedLayer.id === sticker.id
+              showSelectionOutline &&
+              selectedLayer?.type === "sticker" &&
+              selectedLayer.id === sticker.id
                 ? "2px solid rgba(244,114,182,0.6)"
                 : undefined,
+            touchAction: "none",
           }}
           dragGrid={grid}
           resizeGrid={grid}

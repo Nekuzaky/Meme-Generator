@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    // Database credentials
+    'db' => [
+        'host' => 'your_host_here',
+        'port' => 3306,
+        'name' => 'your_database_name_here',
+        'user' => 'your_username_here',
+        'pass' => 'your_password_here',
+        'charset' => 'utf8mb4',
+    ],
+    'auth' => [
+        'token_ttl_days' => 30,
+    ],
+    'cors' => [
+        'allow_origin' => '*',
+        'allow_methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'allow_headers' => 'Content-Type, Authorization',
+    ],
+];
+
+// Note this is a template file. Please copy it to config.php and fill in the actual values.
