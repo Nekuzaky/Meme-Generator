@@ -17,7 +17,17 @@ import { stickerOptions } from "../constants/constants";
 import CaptionProvider from "../context/CaptionContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useMeme } from "../context/MemeContext";
-import { API_TOKEN_KEY, saveMemeApi } from "../lib/api";
+import {
+  API_TOKEN_KEY,
+  autosaveMemeApi,
+  createMemeVersionApi,
+  generateMemeSuggestionsApi,
+  getMemeVersionsApi,
+  restoreMemeVersionApi,
+  saveMemeApi,
+  updateMemeApi,
+  type ApiMemeVersion,
+} from "../lib/api";
 import { trackEngagement } from "../lib/engagement";
 import type { Box } from "../types/types";
 import Caption from "./Caption";
@@ -80,7 +90,7 @@ export default function MemeGenerator({
   box_count,
   imageName,
 }: IProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { boxes, replaceBoxes } = useMeme();
 
   const [activeImageUrl, setActiveImageUrl] = useState(imageUrl);
@@ -103,11 +113,20 @@ export default function MemeGenerator({
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  const [cloudMemeId, setCloudMemeId] = useState<number | null>(null);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [versions, setVersions] = useState<ApiMemeVersion[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiStatus, setAiStatus] = useState<string | null>(null);
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
   const skipHistoryRef = useRef(false);
   const shareLoadedRef = useRef(false);
+  const autosaveTimerRef = useRef<number | null>(null);
 
   const socialTemplates = useMemo(
     () => [
@@ -196,6 +215,31 @@ export default function MemeGenerator({
     }
   };
 
+  const snapshotFromPayload = (payload: unknown): HistorySnapshot | null => {
+    if (!payload || typeof payload !== "object") return null;
+    const asPayload = payload as Partial<SharePayload>;
+    if (
+      asPayload.version !== 1 ||
+      typeof asPayload.activeImageUrl !== "string" ||
+      typeof asPayload.activeImageName !== "string" ||
+      typeof asPayload.boxesCount !== "number" ||
+      !Array.isArray(asPayload.boxes) ||
+      !Array.isArray(asPayload.textLayers) ||
+      !Array.isArray(asPayload.stickers)
+    ) {
+      return null;
+    }
+
+    return {
+      activeImageUrl: asPayload.activeImageUrl,
+      activeImageName: asPayload.activeImageName,
+      boxesCount: asPayload.boxesCount,
+      boxes: asPayload.boxes as Box[],
+      textLayers: asPayload.textLayers as TextLayer[],
+      stickers: asPayload.stickers as StickerLayer[],
+    };
+  };
+
   useEffect(() => {
     if (!shareLoadedRef.current) {
       shareLoadedRef.current = true;
@@ -242,6 +286,10 @@ export default function MemeGenerator({
       { resetHistory: true }
     );
     setShareStatus(null);
+    setCloudMemeId(null);
+    setVersions([]);
+    setShowVersions(false);
+    setAutosaveState("idle");
   }, [imageUrl, imageName, box_count]);
 
   useEffect(() => {
@@ -711,14 +759,26 @@ export default function MemeGenerator({
 
     try {
       setIsSavingProfile(true);
-      await saveMemeApi(token, {
-        title: getBaseFileName(),
-        source_image_url: activeImageUrl,
-        payload: sharePayload,
-        tags: ["creator", "web"],
-        is_public: false,
-      });
+      if (cloudMemeId) {
+        await updateMemeApi(token, cloudMemeId, {
+          title: getBaseFileName(),
+          source_image_url: activeImageUrl,
+          payload: sharePayload,
+          tags: ["creator", "web"],
+          is_public: false,
+        });
+      } else {
+        const saved = await saveMemeApi(token, {
+          title: getBaseFileName(),
+          source_image_url: activeImageUrl,
+          payload: sharePayload,
+          tags: ["creator", "web"],
+          is_public: false,
+        });
+        setCloudMemeId(saved.id);
+      }
       trackEngagement("save");
+      setAutosaveState("saved");
       setShareStatus(t("generator.savedProfile"));
     } catch (error) {
       setShareStatus(
@@ -728,6 +788,155 @@ export default function MemeGenerator({
       setIsSavingProfile(false);
     }
   };
+
+  const loadVersions = async () => {
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    if (!token || !cloudMemeId) return;
+
+    try {
+      setIsLoadingVersions(true);
+      const response = await getMemeVersionsApi(token, cloudMemeId);
+      setVersions(response.items);
+    } catch (error) {
+      setShareStatus(
+        error instanceof Error ? error.message : t("generator.shareUnavailable")
+      );
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  };
+
+  const saveManualVersion = async () => {
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    if (!token || !cloudMemeId) {
+      setShareStatus(t("generator.saveNeedLogin"));
+      return;
+    }
+
+    try {
+      await createMemeVersionApi(token, cloudMemeId, "Manual checkpoint");
+      await loadVersions();
+      setShareStatus(language === "fr" ? "Version enregistree." : "Version saved.");
+    } catch (error) {
+      setShareStatus(
+        error instanceof Error ? error.message : t("generator.shareUnavailable")
+      );
+    }
+  };
+
+  const restoreVersion = async (versionId: number) => {
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    if (!token || !cloudMemeId) return;
+
+    try {
+      const response = await restoreMemeVersionApi(token, cloudMemeId, versionId);
+      const snapshot = snapshotFromPayload(response.item.payload);
+      if (snapshot) {
+        applySnapshot(snapshot, { resetHistory: true });
+      }
+      setShareStatus(language === "fr" ? "Version restauree." : "Version restored.");
+      await loadVersions();
+    } catch (error) {
+      setShareStatus(
+        error instanceof Error ? error.message : t("generator.shareUnavailable")
+      );
+    }
+  };
+
+  const generateAiCaptions = async () => {
+    try {
+      setIsGeneratingAi(true);
+      setAiStatus(null);
+      const response = await generateMemeSuggestionsApi({
+        language,
+        topic: aiTopic,
+        style: "funny",
+      });
+
+      const suggestion = response.items[0];
+      if (!suggestion) {
+        setAiStatus(language === "fr" ? "Aucune suggestion." : "No suggestion.");
+        return;
+      }
+
+      const nextBoxes = deepClone(boxes);
+      if (nextBoxes.length === 0) {
+        nextBoxes.push(createDefaultBox(0));
+      }
+      nextBoxes[0] = {
+        ...nextBoxes[0],
+        text: suggestion.top || nextBoxes[0].text,
+      };
+
+      if (nextBoxes.length > 1) {
+        nextBoxes[1] = {
+          ...nextBoxes[1],
+          text: suggestion.bottom || nextBoxes[1].text,
+        };
+      } else if (suggestion.bottom) {
+        const nextIndex = nextBoxes.length;
+        nextBoxes.push({
+          ...createDefaultBox(nextIndex),
+          text: suggestion.bottom,
+          index: nextIndex,
+        });
+        setTextLayers((prev) => [...prev, createDefaultTextLayer(nextIndex, getNextZIndex())]);
+        setBoxesCount(nextBoxes.length);
+      }
+
+      replaceBoxes(nextBoxes);
+      trackEngagement("edit");
+      setAiStatus(
+        response.provider === "openai"
+          ? language === "fr"
+            ? "Texte IA applique."
+            : "AI text applied."
+          : language === "fr"
+            ? "Texte local applique."
+            : "Local suggestion applied."
+      );
+    } catch (error) {
+      setAiStatus(
+        error instanceof Error ? error.message : t("generator.shareUnavailable")
+      );
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    if (!token || !activeImageUrl) return;
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(async () => {
+      try {
+        setAutosaveState("saving");
+        const response = await autosaveMemeApi(token, {
+          id: cloudMemeId ?? undefined,
+          title: getBaseFileName(),
+          source_image_url: activeImageUrl,
+          payload: sharePayload,
+          tags: ["creator", "web", "autosave"],
+          is_public: false,
+        });
+        setCloudMemeId(response.id);
+        setAutosaveState("saved");
+      } catch {
+        setAutosaveState("error");
+      }
+    }, 1800);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [sharePayload, activeImageUrl, cloudMemeId]);
 
   const closeOnboarding = () => {
     localStorage.setItem("meme-creator-onboarding-v1", "done");

@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import ImageEditor from "./pages/ImageEditor";
 import Landing from "./pages/Landing";
 import Profile from "./pages/Profile";
+import PublicMeme from "./pages/PublicMeme";
 import { trackEngagement } from "./lib/engagement";
 
 export default function App() {
@@ -41,6 +42,7 @@ export default function App() {
                     <Route path="/creator" element={<Home />} />
                     <Route path="/editor" element={<ImageEditor />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/m/:id" element={<PublicMeme />} />
                   </Routes>
                 </div>
               </main>

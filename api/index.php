@@ -753,4 +753,530 @@ if ($segments[0] === 'moderation') {
     }
 }
 
+if ($segments[0] === 'memes') {
+    if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'public') {
+        $limit = max(1, min(100, (int) ($_GET['limit'] ?? 20)));
+        $offset = max(0, (int) ($_GET['offset'] ?? 0));
+        $query = trim((string) ($_GET['q'] ?? ''));
+
+        $sql = 'SELECT m.*, u.username,
+                       (SELECT COUNT(*) FROM meme_favorites mf WHERE mf.meme_id = m.id) AS favorites_count
+                FROM memes m
+                INNER JOIN users u ON u.id = m.user_id
+                WHERE m.is_public = 1
+                  AND m.moderation_status = "approved"';
+        if ($query !== '') {
+            $sql .= ' AND (m.title LIKE :query OR m.description LIKE :query)';
+        }
+        $sql .= ' ORDER BY m.created_at DESC
+                  LIMIT :limit OFFSET :offset';
+
+        $stmt = $pdo->prepare($sql);
+        if ($query !== '') {
+            $stmt->bindValue(':query', '%' . $query . '%', PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+        ok(['items' => array_map('meme_to_api', $rows)]);
+    }
+
+    if ($method === 'GET' && count($segments) === 1) {
+        $user = require_user($pdo);
+        $stmt = $pdo->prepare(
+            'SELECT m.*,
+                    (SELECT COUNT(*) FROM meme_favorites mf WHERE mf.meme_id = m.id) AS favorites_count
+             FROM memes m
+             WHERE m.user_id = :user_id
+             ORDER BY m.created_at DESC'
+        );
+        $stmt->execute([':user_id' => (int) $user['id']]);
+        $rows = $stmt->fetchAll();
+        ok(['items' => array_map('meme_to_api', $rows)]);
+    }
+
+    if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'autosave') {
+        assert_rate_limit($pdo, 'memes_autosave', 240, 3600, 600);
+        $user = require_user($pdo);
+        $body = json_input();
+
+        $memeId = (int) ($body['id'] ?? 0);
+        $current = null;
+        if ($memeId > 0) {
+            $current = require_meme_owner_or_admin($pdo, $memeId, $user);
+        }
+
+        $title = trim((string) ($body['title'] ?? ($current['title'] ?? 'Untitled meme')));
+        if ($title === '') {
+            $title = 'Untitled meme';
+        }
+        $description = trim((string) ($body['description'] ?? ($current['description'] ?? '')));
+        $sourceImageUrl = trim((string) ($body['source_image_url'] ?? ($current['source_image_url'] ?? '')));
+        $generatedImageUrl = trim((string) ($body['generated_image_url'] ?? ($current['generated_image_url'] ?? '')));
+
+        $payload = array_key_exists('payload', $body)
+            ? $body['payload']
+            : ($current && $current['payload_json'] ? json_decode((string) $current['payload_json'], true) : null);
+        $tags = array_key_exists('tags', $body)
+            ? normalize_tags($body['tags'])
+            : ($current['tags_json'] ? normalize_tags(json_decode((string) $current['tags_json'], true) ?? []) : []);
+        $isPublic = array_key_exists('is_public', $body)
+            ? (body_bool($body, 'is_public', false) ? 1 : 0)
+            : (int) ($current['is_public'] ?? 0);
+
+        $blockedTerm = detect_blacklisted_term($pdo, [$title, $description, $tags]);
+        $moderationStatus = 'pending';
+        $moderationReason = null;
+        if ($blockedTerm !== null) {
+            $moderationStatus = 'rejected';
+            $moderationReason = 'Blocked term detected: ' . $blockedTerm;
+        }
+
+        $payloadJson = $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null;
+        $tagsJson = json_encode(array_values($tags), JSON_UNESCAPED_UNICODE);
+
+        if ($current) {
+            $stmt = $pdo->prepare(
+                'UPDATE memes
+                 SET title = :title,
+                     description = :description,
+                     source_image_url = :source_image_url,
+                     generated_image_url = :generated_image_url,
+                     payload_json = :payload_json,
+                     tags_json = :tags_json,
+                     is_public = :is_public,
+                     moderation_status = :moderation_status,
+                     moderation_reason = :moderation_reason,
+                     moderated_by_user_id = NULL,
+                     moderated_at = NULL,
+                     updated_at = NOW()
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                ':title' => $title,
+                ':description' => $description !== '' ? $description : null,
+                ':source_image_url' => $sourceImageUrl !== '' ? $sourceImageUrl : null,
+                ':generated_image_url' => $generatedImageUrl !== '' ? $generatedImageUrl : null,
+                ':payload_json' => $payloadJson,
+                ':tags_json' => $tagsJson,
+                ':is_public' => $isPublic,
+                ':moderation_status' => $moderationStatus,
+                ':moderation_reason' => $moderationReason,
+                ':id' => $memeId,
+            ]);
+        } else {
+            $stmt = $pdo->prepare(
+                'INSERT INTO memes
+                    (user_id, title, description, source_image_url, generated_image_url, payload_json, tags_json, is_public, moderation_status, moderation_reason)
+                 VALUES
+                    (:user_id, :title, :description, :source_image_url, :generated_image_url, :payload_json, :tags_json, :is_public, :moderation_status, :moderation_reason)'
+            );
+            $stmt->execute([
+                ':user_id' => (int) $user['id'],
+                ':title' => $title,
+                ':description' => $description !== '' ? $description : null,
+                ':source_image_url' => $sourceImageUrl !== '' ? $sourceImageUrl : null,
+                ':generated_image_url' => $generatedImageUrl !== '' ? $generatedImageUrl : null,
+                ':payload_json' => $payloadJson,
+                ':tags_json' => $tagsJson,
+                ':is_public' => $isPublic,
+                ':moderation_status' => $moderationStatus,
+                ':moderation_reason' => $moderationReason,
+            ]);
+            $memeId = (int) $pdo->lastInsertId();
+        }
+
+        $latest = fetch_meme_row($pdo, $memeId);
+        if ($latest) {
+            persist_meme_version(
+                $pdo,
+                $memeId,
+                (int) $latest['user_id'],
+                $latest,
+                'autosave',
+                (int) $user['id'],
+                'Autosave'
+            );
+        }
+
+        ok([
+            'id' => $memeId,
+            'created' => $current === null,
+            'updated' => $current !== null,
+            'moderation_status' => $moderationStatus,
+        ], $current === null ? 201 : 200);
+    }
+
+    if ($method === 'POST' && count($segments) === 1) {
+        assert_rate_limit($pdo, 'memes_create', 60, 3600, 600);
+        $user = require_user($pdo);
+        $body = json_input();
+
+        $title = trim((string) ($body['title'] ?? 'Untitled meme'));
+        if ($title === '') {
+            $title = 'Untitled meme';
+        }
+        $description = trim((string) ($body['description'] ?? ''));
+        $sourceImageUrl = trim((string) ($body['source_image_url'] ?? ''));
+        $generatedImageUrl = trim((string) ($body['generated_image_url'] ?? ''));
+        $payload = $body['payload'] ?? null;
+        $tags = normalize_tags($body['tags'] ?? []);
+        $isPublic = body_bool($body, 'is_public', false) ? 1 : 0;
+
+        $blockedTerm = detect_blacklisted_term($pdo, [$title, $description, $tags]);
+        $moderationStatus = 'pending';
+        $moderationReason = null;
+        if ($blockedTerm !== null) {
+            $moderationStatus = 'rejected';
+            $moderationReason = 'Blocked term detected: ' . $blockedTerm;
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO memes
+                (user_id, title, description, source_image_url, generated_image_url, payload_json, tags_json, is_public, moderation_status, moderation_reason)
+             VALUES
+                (:user_id, :title, :description, :source_image_url, :generated_image_url, :payload_json, :tags_json, :is_public, :moderation_status, :moderation_reason)'
+        );
+        $stmt->execute([
+            ':user_id' => (int) $user['id'],
+            ':title' => $title,
+            ':description' => $description !== '' ? $description : null,
+            ':source_image_url' => $sourceImageUrl !== '' ? $sourceImageUrl : null,
+            ':generated_image_url' => $generatedImageUrl !== '' ? $generatedImageUrl : null,
+            ':payload_json' => $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null,
+            ':tags_json' => json_encode(array_values($tags), JSON_UNESCAPED_UNICODE),
+            ':is_public' => $isPublic,
+            ':moderation_status' => $moderationStatus,
+            ':moderation_reason' => $moderationReason,
+        ]);
+
+        $id = (int) $pdo->lastInsertId();
+        $latest = fetch_meme_row($pdo, $id);
+        if ($latest) {
+            persist_meme_version(
+                $pdo,
+                $id,
+                (int) $latest['user_id'],
+                $latest,
+                'create',
+                (int) $user['id'],
+                'Initial version'
+            );
+        }
+
+        ok([
+            'id' => $id,
+            'moderation_status' => $moderationStatus,
+        ], 201);
+    }
+
+    if (count($segments) >= 2 && ctype_digit($segments[1])) {
+        $memeId = (int) $segments[1];
+
+        if ($method === 'GET' && count($segments) === 2) {
+            $viewer = current_user($pdo);
+            $row = fetch_meme_row($pdo, $memeId);
+            if (!$row) {
+                fail('Meme not found', 404);
+            }
+            if (!can_view_meme($row, $viewer)) {
+                fail('Forbidden', 403);
+            }
+            ok(['item' => meme_to_api($row)]);
+        }
+
+        if ($method === 'POST' && count($segments) === 3 && $segments[2] === 'report') {
+            assert_rate_limit($pdo, 'memes_report', 50, 3600, 900);
+            $reporter = require_user($pdo);
+            $body = json_input();
+            $row = fetch_meme_row($pdo, $memeId);
+            if (!$row) {
+                fail('Meme not found', 404);
+            }
+            if ((int) $row['user_id'] === (int) $reporter['id']) {
+                fail('You cannot report your own meme', 400);
+            }
+
+            $reason = body_string($body, 'reason', 120, 'Inappropriate content');
+            $details = body_string($body, 'details', 2000, '');
+
+            $stmt = $pdo->prepare(
+                'INSERT INTO meme_reports (meme_id, reporter_user_id, reason, details, status)
+                 VALUES (:meme_id, :reporter_user_id, :reason, :details, "open")'
+            );
+            $stmt->execute([
+                ':meme_id' => $memeId,
+                ':reporter_user_id' => (int) $reporter['id'],
+                ':reason' => $reason,
+                ':details' => $details !== '' ? $details : null,
+            ]);
+
+            $countStmt = $pdo->prepare(
+                'SELECT COUNT(*) AS open_reports
+                 FROM meme_reports
+                 WHERE meme_id = :meme_id AND status = "open"'
+            );
+            $countStmt->execute([':meme_id' => $memeId]);
+            $openReports = (int) (($countStmt->fetch()['open_reports'] ?? 0));
+
+            if ($openReports >= 3) {
+                $updateStmt = $pdo->prepare(
+                    'UPDATE memes
+                     SET moderation_status = "pending",
+                         moderation_reason = "Pending review after reports",
+                         moderated_by_user_id = NULL,
+                         moderated_at = NULL,
+                         updated_at = NOW()
+                     WHERE id = :id AND moderation_status = "approved"'
+                );
+                $updateStmt->execute([':id' => $memeId]);
+            }
+
+            ok(['reported' => true], 201);
+        }
+
+        if ($method === 'GET' && count($segments) === 3 && $segments[2] === 'versions') {
+            $user = require_user($pdo);
+            require_meme_owner_or_admin($pdo, $memeId, $user);
+
+            $stmt = $pdo->prepare(
+                'SELECT id, meme_id, version_label, change_source, created_at, created_by_user_id
+                 FROM meme_versions
+                 WHERE meme_id = :meme_id
+                 ORDER BY created_at DESC
+                 LIMIT 80'
+            );
+            $stmt->execute([':meme_id' => $memeId]);
+            $rows = $stmt->fetchAll();
+            ok(['items' => $rows]);
+        }
+
+        if ($method === 'POST' && count($segments) === 3 && $segments[2] === 'versions') {
+            $user = require_user($pdo);
+            $row = require_meme_owner_or_admin($pdo, $memeId, $user);
+            $body = json_input();
+            $label = body_string($body, 'label', 120, 'Manual snapshot');
+            persist_meme_version(
+                $pdo,
+                $memeId,
+                (int) $row['user_id'],
+                $row,
+                'manual',
+                (int) $user['id'],
+                $label
+            );
+            ok(['created' => true], 201);
+        }
+
+        if ($method === 'POST' && count($segments) === 4 && $segments[2] === 'restore' && ctype_digit($segments[3])) {
+            $user = require_user($pdo);
+            require_meme_owner_or_admin($pdo, $memeId, $user);
+            $versionId = (int) $segments[3];
+
+            $versionStmt = $pdo->prepare(
+                'SELECT *
+                 FROM meme_versions
+                 WHERE id = :id AND meme_id = :meme_id
+                 LIMIT 1'
+            );
+            $versionStmt->execute([
+                ':id' => $versionId,
+                ':meme_id' => $memeId,
+            ]);
+            $version = $versionStmt->fetch();
+            if (!$version) {
+                fail('Version not found', 404);
+            }
+
+            $stmt = $pdo->prepare(
+                'UPDATE memes
+                 SET title = :title,
+                     description = :description,
+                     source_image_url = :source_image_url,
+                     generated_image_url = :generated_image_url,
+                     payload_json = :payload_json,
+                     tags_json = :tags_json,
+                     is_public = :is_public,
+                     moderation_status = "pending",
+                     moderation_reason = "Restored version pending review",
+                     moderated_by_user_id = NULL,
+                     moderated_at = NULL,
+                     updated_at = NOW()
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                ':title' => $version['snapshot_title'],
+                ':description' => $version['snapshot_description'],
+                ':source_image_url' => $version['snapshot_source_image_url'],
+                ':generated_image_url' => $version['snapshot_generated_image_url'],
+                ':payload_json' => $version['snapshot_payload_json'],
+                ':tags_json' => $version['snapshot_tags_json'] ?: json_encode([], JSON_UNESCAPED_UNICODE),
+                ':is_public' => ((int) $version['snapshot_is_public']) === 1 ? 1 : 0,
+                ':id' => $memeId,
+            ]);
+
+            $latest = fetch_meme_row($pdo, $memeId);
+            if ($latest) {
+                persist_meme_version(
+                    $pdo,
+                    $memeId,
+                    (int) $latest['user_id'],
+                    $latest,
+                    'restore',
+                    (int) $user['id'],
+                    'Restore from version #' . $versionId
+                );
+            }
+
+            $updatedRow = fetch_meme_row($pdo, $memeId);
+            if (!$updatedRow) {
+                fail('Meme not found', 404);
+            }
+            ok([
+                'restored' => true,
+                'item' => meme_to_api($updatedRow),
+            ]);
+        }
+
+        if ($method === 'PUT' || $method === 'PATCH' || $method === 'DELETE') {
+            $user = require_user($pdo);
+            require_meme_owner_or_admin($pdo, $memeId, $user);
+        }
+
+        if (($method === 'PUT' || $method === 'PATCH') && count($segments) === 2) {
+            assert_rate_limit($pdo, 'memes_update', 180, 3600, 600);
+            $user = require_user($pdo);
+            $body = json_input();
+            $fields = [];
+            $params = [':id' => $memeId];
+
+            if (array_key_exists('title', $body)) {
+                $fields[] = 'title = :title';
+                $params[':title'] = trim((string) $body['title']) ?: 'Untitled meme';
+            }
+            if (array_key_exists('description', $body)) {
+                $fields[] = 'description = :description';
+                $description = trim((string) $body['description']);
+                $params[':description'] = $description !== '' ? $description : null;
+            }
+            if (array_key_exists('source_image_url', $body)) {
+                $fields[] = 'source_image_url = :source_image_url';
+                $url = trim((string) $body['source_image_url']);
+                $params[':source_image_url'] = $url !== '' ? $url : null;
+            }
+            if (array_key_exists('generated_image_url', $body)) {
+                $fields[] = 'generated_image_url = :generated_image_url';
+                $url = trim((string) $body['generated_image_url']);
+                $params[':generated_image_url'] = $url !== '' ? $url : null;
+            }
+            if (array_key_exists('payload', $body)) {
+                $fields[] = 'payload_json = :payload_json';
+                $params[':payload_json'] = $body['payload'] !== null
+                    ? json_encode($body['payload'], JSON_UNESCAPED_UNICODE)
+                    : null;
+            }
+            if (array_key_exists('tags', $body)) {
+                $fields[] = 'tags_json = :tags_json';
+                $params[':tags_json'] = json_encode(normalize_tags($body['tags']), JSON_UNESCAPED_UNICODE);
+            }
+            if (array_key_exists('is_public', $body)) {
+                $fields[] = 'is_public = :is_public';
+                $params[':is_public'] = body_bool($body, 'is_public', false) ? 1 : 0;
+                $fields[] = 'moderated_by_user_id = NULL';
+                $fields[] = 'moderated_at = NULL';
+            }
+
+            if (empty($fields)) {
+                fail('Nothing to update');
+            }
+
+            $sql = 'UPDATE memes SET ' . implode(', ', $fields) . ', updated_at = NOW() WHERE id = :id';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            $updated = fetch_meme_row($pdo, $memeId);
+            if (!$updated) {
+                fail('Meme not found', 404);
+            }
+
+            $blockedTerm = detect_blacklisted_term(
+                $pdo,
+                [
+                    $updated['title'],
+                    $updated['description'],
+                    $updated['tags_json'] ? (json_decode((string) $updated['tags_json'], true) ?? []) : [],
+                ]
+            );
+            $status = 'pending';
+            $reason = null;
+            if ($blockedTerm !== null) {
+                $status = 'rejected';
+                $reason = 'Blocked term detected: ' . $blockedTerm;
+            }
+
+            $statusStmt = $pdo->prepare(
+                'UPDATE memes
+                 SET moderation_status = :status,
+                     moderation_reason = :reason,
+                     moderated_by_user_id = NULL,
+                     moderated_at = NULL
+                 WHERE id = :id'
+            );
+            $statusStmt->execute([
+                ':status' => $status,
+                ':reason' => $reason,
+                ':id' => $memeId,
+            ]);
+
+            $updated = fetch_meme_row($pdo, $memeId);
+            if ($updated) {
+                persist_meme_version(
+                    $pdo,
+                    $memeId,
+                    (int) $updated['user_id'],
+                    $updated,
+                    'update',
+                    (int) $user['id'],
+                    'Update'
+                );
+            }
+            ok(['updated' => true, 'moderation_status' => $status]);
+        }
+
+        if ($method === 'DELETE' && count($segments) === 2) {
+            assert_rate_limit($pdo, 'memes_delete', 80, 3600, 600);
+            $stmt = $pdo->prepare('DELETE FROM memes WHERE id = :id');
+            $stmt->execute([':id' => $memeId]);
+            ok(['deleted' => true]);
+        }
+
+        if (($method === 'POST' || $method === 'DELETE') && count($segments) === 3 && $segments[2] === 'favorite') {
+            $user = require_user($pdo);
+
+            if ($method === 'POST') {
+                $stmt = $pdo->prepare(
+                    'INSERT IGNORE INTO meme_favorites (user_id, meme_id) VALUES (:user_id, :meme_id)'
+                );
+                $stmt->execute([
+                    ':user_id' => (int) $user['id'],
+                    ':meme_id' => $memeId,
+                ]);
+                ok(['favorited' => true]);
+            }
+
+            if ($method === 'DELETE') {
+                $stmt = $pdo->prepare(
+                    'DELETE FROM meme_favorites WHERE user_id = :user_id AND meme_id = :meme_id'
+                );
+                $stmt->execute([
+                    ':user_id' => (int) $user['id'],
+                    ':meme_id' => $memeId,
+                ]);
+                ok(['favorited' => false]);
+            }
+        }
+    }
+}
+
 fail('Route not found', 404);

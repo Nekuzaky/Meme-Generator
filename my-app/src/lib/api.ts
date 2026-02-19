@@ -20,9 +20,25 @@ export interface ApiMeme {
   payload?: unknown;
   tags?: string[];
   is_public: boolean;
+  moderation_status?: "pending" | "approved" | "rejected";
+  moderation_reason?: string | null;
   favorites_count?: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ApiMemeVersion {
+  id: number;
+  meme_id: number;
+  version_label?: string | null;
+  change_source: "create" | "update" | "autosave" | "manual" | "restore";
+  created_at: string;
+  created_by_user_id?: number | null;
+}
+
+export interface ApiMemeSuggestion {
+  top: string;
+  bottom: string;
 }
 
 type ApiResponse<T> = {
@@ -96,7 +112,7 @@ export async function logoutApi(token: string) {
 
 export async function getMeApi(token: string) {
   return request<{
-    user: ApiUser;
+    user: ApiUser & { is_admin?: boolean };
     stats: { total_memes: number; public_memes: number };
   }>("/me", { method: "GET" }, token);
 }
@@ -142,6 +158,131 @@ export async function saveMemeApi(
       method: "POST",
       body: JSON.stringify(payload),
     },
+    token
+  );
+}
+
+export async function autosaveMemeApi(
+  token: string,
+  payload: {
+    id?: number;
+    title?: string;
+    description?: string;
+    source_image_url?: string;
+    generated_image_url?: string;
+    payload?: unknown;
+    tags?: string[];
+    is_public?: boolean;
+  }
+) {
+  return request<{
+    id: number;
+    created: boolean;
+    updated: boolean;
+    moderation_status?: "pending" | "approved" | "rejected";
+  }>(
+    "/memes/autosave",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function getPublicMemesApi(params?: { limit?: number; offset?: number; q?: string }) {
+  const query = new URLSearchParams();
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  if (params?.q) query.set("q", params.q);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request<{ items: ApiMeme[] }>(`/memes/public${suffix}`, { method: "GET" });
+}
+
+export async function getPublicMemeApi(id: number | string) {
+  return request<{ item: ApiMeme }>(`/memes/${id}`, { method: "GET" });
+}
+
+export async function reportMemeApi(
+  id: number | string,
+  params: { reason: string; details?: string },
+  token: string
+) {
+  return request<{ reported: boolean }>(
+    `/memes/${id}/report`,
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    },
+    token
+  );
+}
+
+export async function getMemeVersionsApi(token: string, id: number | string) {
+  return request<{ items: ApiMemeVersion[] }>(`/memes/${id}/versions`, { method: "GET" }, token);
+}
+
+export async function createMemeVersionApi(
+  token: string,
+  id: number | string,
+  label?: string
+) {
+  return request<{ created: boolean }>(
+    `/memes/${id}/versions`,
+    {
+      method: "POST",
+      body: JSON.stringify({ label }),
+    },
+    token
+  );
+}
+
+export async function restoreMemeVersionApi(
+  token: string,
+  id: number | string,
+  versionId: number | string
+) {
+  return request<{ restored: boolean; item: ApiMeme }>(
+    `/memes/${id}/restore/${versionId}`,
+    { method: "POST", body: JSON.stringify({}) },
+    token
+  );
+}
+
+export async function generateMemeSuggestionsApi(params: {
+  language: string;
+  topic?: string;
+  style?: string;
+}) {
+  return request<{ items: ApiMemeSuggestion[]; provider: "openai" | "local" }>(
+    "/ai/meme-suggestions",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}
+
+export async function getModerationMemesApi(
+  token: string,
+  params?: { status?: "pending" | "approved" | "rejected"; limit?: number; offset?: number }
+) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request<{ items: ApiMeme[] }>(`/moderation/memes${suffix}`, { method: "GET" }, token);
+}
+
+export async function moderateMemeApi(
+  token: string,
+  id: number | string,
+  payload: { status: "pending" | "approved" | "rejected"; reason?: string }
+) {
+  return request<{ updated: boolean }>(
+    `/moderation/memes/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
     token
   );
 }

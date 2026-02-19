@@ -27,6 +27,14 @@ return [
     ],
     'security' => [
         'ip_hash_secret' => 'replace-with-long-random-secret',
+        'admin_emails' => [
+            'admin@example.com',
+        ],
+    ],
+    'ai' => [
+        // Optional: if empty, API falls back to local meme suggestion generator
+        'openai_api_key' => '',
+        'model' => 'gpt-4.1-mini',
     ],
 ];
 
