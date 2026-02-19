@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import MemeProvider from "./context/MemeContext";
@@ -10,8 +11,13 @@ import Home from "./pages/Home";
 import ImageEditor from "./pages/ImageEditor";
 import Landing from "./pages/Landing";
 import Profile from "./pages/Profile";
+import { trackEngagement } from "./lib/engagement";
 
 export default function App() {
+  useEffect(() => {
+    trackEngagement("session");
+  }, []);
+
   return (
     <ThemeProvider>
       <LanguageProvider>

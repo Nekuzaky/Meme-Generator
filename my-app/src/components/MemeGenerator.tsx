@@ -18,6 +18,7 @@ import CaptionProvider from "../context/CaptionContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useMeme } from "../context/MemeContext";
 import { API_TOKEN_KEY, saveMemeApi } from "../lib/api";
+import { trackEngagement } from "../lib/engagement";
 import type { Box } from "../types/types";
 import Caption from "./Caption";
 import ImageSection from "./ImageSection";
@@ -553,6 +554,7 @@ export default function MemeGenerator({
     const blob = await buildMemeBlob();
     if (!blob) return;
     saveAs(blob, getPngFileName());
+    trackEngagement("download");
   };
 
   const exportSocialTemplate = async (template: {
@@ -596,6 +598,7 @@ export default function MemeGenerator({
       if (!outputBlob) return;
 
       saveAs(outputBlob, getPngFileName(template.id));
+      trackEngagement("download");
     } finally {
       URL.revokeObjectURL(sourceUrl);
     }
@@ -672,6 +675,7 @@ export default function MemeGenerator({
           data.files = [file];
         }
         await navigator.share(data);
+        trackEngagement("share");
         setShareStatus(t("generator.shareDone"));
         return;
       }
@@ -680,11 +684,13 @@ export default function MemeGenerator({
       if (navigator.clipboard?.write && clipboardItemCtor) {
         const clipboardItem = new clipboardItemCtor({ "image/png": blob });
         await navigator.clipboard.write([clipboardItem]);
+        trackEngagement("share");
         setShareStatus(t("generator.shareCopied"));
         return;
       }
 
       saveAs(blob, fileName);
+      trackEngagement("download");
       setShareStatus(t("generator.shareFallbackDownload"));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -712,6 +718,7 @@ export default function MemeGenerator({
         tags: ["creator", "web"],
         is_public: false,
       });
+      trackEngagement("save");
       setShareStatus(t("generator.savedProfile"));
     } catch (error) {
       setShareStatus(

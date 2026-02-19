@@ -1,21 +1,60 @@
+import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { MdDarkMode, MdLightMode } from "react-icons/md";
+import {
+  MdAutoAwesome,
+  MdDarkMode,
+  MdLightMode,
+  MdLocalFireDepartment,
+  MdMilitaryTech,
+} from "react-icons/md";
 import logo from "../assets/images/logo.png";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { readEngagementSnapshot } from "../lib/engagement";
 
 export default function Navbar() {
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const [engagement, setEngagement] = useState(() => readEngagementSnapshot());
   const languageLabel = language === "fr" ? "FR" : "EN";
   const isDark = theme === "dark";
+  const challengePercent = Math.round(
+    (engagement.challengeProgress / engagement.challengeGoal) * 100
+  );
+
+  useEffect(() => {
+    const refresh = () => setEngagement(readEngagementSnapshot());
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  const copy =
+    language === "fr"
+      ? {
+          level: "Niveau",
+          streak: "Serie",
+          days: "jours",
+          challenge: "Challenge",
+          turbo: "Mode turbo",
+        }
+      : {
+          level: "Level",
+          streak: "Streak",
+          days: "days",
+          challenge: "Challenge",
+          turbo: "Turbo mode",
+        };
 
   const headerClasses = isDark
-    ? "border-white/10 bg-slate-950/70"
-    : "border-slate-200/80 bg-white/80";
+    ? "border-white/10 bg-slate-950/80 supports-[backdrop-filter]:bg-slate-950/65"
+    : "border-slate-200/90 bg-white/90 supports-[backdrop-filter]:bg-white/75";
   const controlClasses = isDark
     ? "border-white/10 bg-slate-900/70 text-slate-200"
-    : "border-slate-200 bg-white/90 text-slate-700 shadow-sm shadow-slate-200/70";
+    : "border-slate-200 bg-white/95 text-slate-700 shadow-sm shadow-slate-200/80";
   const activeNavClasses = isDark
     ? "bg-fuchsia-500/20 text-fuchsia-200"
     : "bg-fuchsia-100 text-fuchsia-700";
@@ -31,10 +70,10 @@ export default function Navbar() {
         <div className="flex items-center justify-between gap-3">
           <Link
             to="/"
-            className="flex items-center gap-3"
+            className="group flex items-center gap-3"
             aria-label={t("brand.name")}
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400 shadow-lg shadow-fuchsia-500/30">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400 shadow-lg shadow-fuchsia-500/30 transition group-hover:scale-105">
               <img
                 src={logo}
                 alt={t("brand.name")}
@@ -50,6 +89,17 @@ export default function Navbar() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <div
+              className={`hidden items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold md:flex ${controlClasses}`}
+            >
+              <span className="text-fuchsia-300">
+                <MdMilitaryTech className="text-sm" />
+              </span>
+              <span className={mutedTextClasses}>
+                {copy.level} {engagement.level}
+              </span>
+            </div>
+
             <div className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${controlClasses}`}>
               <span className={mutedTextClasses}>
                 {t("navbar.language")} {languageLabel}
@@ -64,6 +114,7 @@ export default function Navbar() {
                 <option value="en">EN</option>
               </select>
             </div>
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -79,6 +130,14 @@ export default function Navbar() {
                 {theme === "dark" ? t("theme.dark") : t("theme.light")}
               </span>
             </button>
+
+            <Link
+              to="/creator"
+              className="hidden items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-3 py-1 text-xs font-semibold text-white transition hover:brightness-110 md:flex"
+            >
+              <MdAutoAwesome className="text-sm" />
+              {copy.turbo}
+            </Link>
           </div>
         </div>
 
@@ -120,9 +179,19 @@ export default function Navbar() {
           </nav>
 
           <div className={`hidden items-center gap-3 text-xs md:flex ${mutedTextClasses}`}>
-            <span>{t("navbar.trending")}</span>
-            <span>-</span>
-            <span>{t("navbar.drag")}</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-1 text-amber-200">
+              <MdLocalFireDepartment className="text-sm" />
+              {copy.streak} {engagement.currentStreak} {copy.days}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-2 py-1">
+              {copy.challenge} {engagement.challengeProgress}/{engagement.challengeGoal}
+              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-800">
+                <span
+                  className="block h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 transition-all duration-300"
+                  style={{ width: `${Math.max(8, challengePercent)}%` }}
+                />
+              </span>
+            </span>
           </div>
         </div>
       </div>

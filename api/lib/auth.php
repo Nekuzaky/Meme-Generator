@@ -71,3 +71,29 @@ function require_user(PDO $pdo): array
     }
     return $user;
 }
+
+function is_admin_user(array $user): bool
+{
+    $admins = config()['security']['admin_emails'] ?? [];
+    if (!is_array($admins)) {
+        return false;
+    }
+
+    $email = utf8_strtolower((string) ($user['email'] ?? ''));
+    foreach ($admins as $adminEmail) {
+        if ($email === utf8_strtolower((string) $adminEmail)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function require_admin(PDO $pdo): array
+{
+    $user = require_user($pdo);
+    if (!is_admin_user($user)) {
+        fail('Forbidden', 403);
+    }
+    return $user;
+}

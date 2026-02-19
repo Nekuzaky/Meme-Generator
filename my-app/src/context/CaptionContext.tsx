@@ -96,7 +96,9 @@ export default function CaptionProvider({ children, index }: CaptionProviderProp
     if (hasDiff) {
       dispatch({ type: RESET, payload: nextState });
     }
-  }, [boxForIndex, state]);
+    // Keep local typing smooth: only resync when the source box changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxForIndex]);
 
   const setText = (text: string) => {
     dispatch({ type: TEXT, payload: text });

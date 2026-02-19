@@ -8,6 +8,7 @@ import {
 } from "react-icons/md";
 import QRCode from "qrcode";
 import { useLanguage } from "../context/LanguageContext";
+import { trackEngagement } from "../lib/engagement";
 
 type ImageEditorProject = {
   templateId: string;
@@ -139,6 +140,7 @@ export default function ImageEditor() {
     }
     setImageUrl(trimmed);
     setImageName("image-editee.png");
+    trackEngagement("edit");
   };
 
   const resetEditor = () => {
@@ -314,6 +316,7 @@ export default function ImageEditor() {
     link.href = canvas.toDataURL("image/png");
     link.download = imageName || "image-editee.png";
     link.click();
+    trackEngagement("download");
   };
 
   const exportTemplate = (id: string) => {
@@ -339,6 +342,7 @@ export default function ImageEditor() {
       try {
         const parsed = JSON.parse(reader.result as string) as ImageEditorProject;
         applyProject(parsed);
+        trackEngagement("edit");
       } catch {
         // ignore invalid json
       }
@@ -359,6 +363,7 @@ export default function ImageEditor() {
       localStorage.setItem("image-editor-drafts", JSON.stringify(next));
       return next;
     });
+    trackEngagement("save");
   };
 
   const removeDraft = (id: string) => {
