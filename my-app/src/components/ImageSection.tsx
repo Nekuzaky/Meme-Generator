@@ -21,6 +21,7 @@ interface IProps {
     | { type: "sticker"; id: string }
     | null;
   showSelectionOutline?: boolean;
+  isExporting?: boolean;
   stickers?: {
     id: string;
     emoji?: string;
@@ -49,6 +50,7 @@ export default function ImageSection({
   stickers = [],
   selectedLayer,
   showSelectionOutline = false,
+  isExporting = false,
   onStickerChange,
   onTextLayerChange,
   onSelectText,
@@ -189,6 +191,8 @@ export default function ImageSection({
             const layer = textLayers.find((item) => item.index === index);
             const isLocked = layer?.locked ?? false;
             const isSelected = selectedLayer?.type === "text" && selectedLayer.index === index;
+            const canEditLayer = !isExporting && !isLocked;
+            const showTextHandles = canEditLayer && showSelectionOutline && isSelected;
             const x = layer?.x ?? 20;
             const y = layer?.y ?? getTop(index);
             const width = layer?.width ?? 220;
@@ -201,18 +205,18 @@ export default function ImageSection({
                   ...getStyle(outline_color, color, fontFamily, fontSize, effect),
                   zIndex: layer?.zIndex ?? 1,
                   outline:
-                    showSelectionOutline && isSelected
+                    !isExporting && showSelectionOutline && isSelected
                       ? "2px solid rgba(244,114,182,0.6)"
                       : undefined,
                   touchAction: "none",
                 }}
                 key={index}
                 bounds="#downloadMeme"
-                disableDragging={isLocked}
-                enableResizing={!isLocked}
+                disableDragging={!canEditLayer}
+                enableResizing={showTextHandles}
                 minWidth={96}
                 minHeight={52}
-                resizeHandleStyles={resizeHandleStyles}
+                resizeHandleStyles={showTextHandles ? resizeHandleStyles : undefined}
                 dragGrid={grid}
                 resizeGrid={grid}
                 onClick={() => onSelectText?.(index)}
@@ -230,7 +234,7 @@ export default function ImageSection({
                   });
                 }}
               >
-                <span className={effect === "shake" ? "text-shake" : undefined}>
+                <span>
                   {effect === "arc" ? renderArcText(text) : text}
                 </span>
               </Rnd>
@@ -239,6 +243,15 @@ export default function ImageSection({
         )}
 
       {stickers.map((sticker) => (
+        (() => {
+          const canEditSticker = !isExporting && !sticker.locked;
+          const showStickerHandles =
+            canEditSticker &&
+            showSelectionOutline &&
+            selectedLayer?.type === "sticker" &&
+            selectedLayer.id === sticker.id;
+
+          return (
         <Rnd
           key={sticker.id}
           bounds="#downloadMeme"
@@ -255,14 +268,15 @@ export default function ImageSection({
             )
           }
           lockAspectRatio
-          enableResizing={!sticker.locked}
-          disableDragging={sticker.locked}
+          enableResizing={showStickerHandles}
+          disableDragging={!canEditSticker}
           minWidth={48}
           minHeight={48}
-          resizeHandleStyles={resizeHandleStyles}
+          resizeHandleStyles={showStickerHandles ? resizeHandleStyles : undefined}
           style={{
             zIndex: sticker.zIndex,
             outline:
+              !isExporting &&
               showSelectionOutline &&
               selectedLayer?.type === "sticker" &&
               selectedLayer.id === sticker.id
@@ -286,6 +300,8 @@ export default function ImageSection({
             )}
           </div>
         </Rnd>
+          );
+        })()
       ))}
     </div>
   );

@@ -14,11 +14,19 @@ return [
     ],
     'auth' => [
         'token_ttl_days' => 30,
+        'max_login_attempts_per_minute' => 8,
+        'max_register_attempts_per_hour' => 20,
     ],
     'cors' => [
-        'allow_origin' => '*',
+        'allow_origins' => [
+            'https://meme.altcore.fr',
+            'http://localhost:5173',
+        ],
         'allow_methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'allow_headers' => 'Content-Type, Authorization',
+    ],
+    'security' => [
+        'ip_hash_secret' => 'replace-with-long-random-secret',
     ],
 ];
 

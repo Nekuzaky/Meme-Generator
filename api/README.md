@@ -4,11 +4,12 @@ API backend for `meme.altcore.fr/api/`.
 
 ## Setup
 
-1. Import `insert_in_your_db.sql` into your MySQL database.
+1. Import `schema.sql` into your MySQL database.
 2. Deploy this folder as `/api`.
 3. Ensure PHP has PDO MySQL enabled.
 4. If using Apache, keep `.htaccess` for routing.
 5. Copy `config.php.exemple` to `config.php` and fill credentials.
+6. Set a long random value for `security.ip_hash_secret` in `config.php`.
 
 ## Auth flow
 
@@ -34,6 +35,14 @@ Authorization: Bearer <token>
 - `POST /api/memes/{id}/favorite` (auth)
 - `DELETE /api/memes/{id}/favorite` (auth)
 - `GET /api/me/favorites` (auth)
+- `POST /api/telemetry/visit` (consent required)
+
+## Security notes
+
+- Tokens are random and only stored as SHA-256 hashes.
+- Authentication and write actions are rate-limited.
+- API sends security headers (`nosniff`, `frame deny`, HSTS on HTTPS).
+- Telemetry stores `ip_hash` (HMAC) instead of raw IP.
 
 ## Example payload (create meme)
 

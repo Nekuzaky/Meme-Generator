@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/auth.php';
+require __DIR__ . '/lib/security.php';
 
 apply_cors();
 
@@ -34,6 +35,7 @@ if (empty($segments)) {
             'POST /api/memes/{id}/favorite',
             'DELETE /api/memes/{id}/favorite',
             'GET  /api/me/favorites',
+            'POST /api/telemetry/visit',
         ],
     ]);
 }
@@ -70,17 +72,25 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
     $body = json_input();
 
     if ($method === 'POST' && $action === 'register') {
+        assert_rate_limit(
+            $pdo,
+            'auth_register',
+            (int) (config()['auth']['max_register_attempts_per_hour'] ?? 20),
+            3600,
+            1800
+        );
+
         $username = trim((string) ($body['username'] ?? ''));
         $email = trim((string) ($body['email'] ?? ''));
         $password = (string) ($body['password'] ?? '');
 
-        if (mb_strlen($username) < 3 || mb_strlen($username) > 32) {
+        if (utf8_strlen($username) < 3 || utf8_strlen($username) > 32) {
             fail('Username must be between 3 and 32 characters');
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             fail('Invalid email');
         }
-        if (mb_strlen($password) < 8) {
+        if (utf8_strlen($password) < 8) {
             fail('Password must contain at least 8 characters');
         }
 
@@ -90,7 +100,7 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
             );
             $stmt->execute([
                 ':username' => $username,
-                ':email' => mb_strtolower($email),
+                ':email' => utf8_strtolower($email),
                 ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
             ]);
         } catch (PDOException $e) {
@@ -107,12 +117,20 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
             'user' => [
                 'id' => $userId,
                 'username' => $username,
-                'email' => mb_strtolower($email),
+                'email' => utf8_strtolower($email),
             ],
         ], 201);
     }
 
     if ($method === 'POST' && $action === 'login') {
+        assert_rate_limit(
+            $pdo,
+            'auth_login',
+            (int) (config()['auth']['max_login_attempts_per_minute'] ?? 8),
+            60,
+            900
+        );
+
         $email = trim((string) ($body['email'] ?? ''));
         $password = (string) ($body['password'] ?? '');
 
@@ -123,7 +141,7 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
         $stmt = $pdo->prepare(
             'SELECT id, username, email, password_hash FROM users WHERE email = :email LIMIT 1'
         );
-        $stmt->execute([':email' => mb_strtolower($email)]);
+        $stmt->execute([':email' => utf8_strtolower($email)]);
         $user = $stmt->fetch();
 
         if (!$user || !password_verify($password, (string) $user['password_hash'])) {
@@ -194,6 +212,49 @@ if ($segments[0] === 'me') {
     }
 }
 
+if ($segments[0] === 'telemetry' && count($segments) === 2 && $segments[1] === 'visit') {
+    if ($method !== 'POST') {
+        fail('Method not allowed', 405);
+    }
+
+    assert_rate_limit($pdo, 'telemetry_visit', 120, 3600, 600);
+    $body = json_input();
+    $consent = body_bool($body, 'consent', false);
+    if (!$consent) {
+        fail('Consent is required', 400);
+    }
+
+    $visitorId = limit_string((string) ($body['visitor_id'] ?? ''), 80);
+    if ($visitorId === null) {
+        fail('visitor_id is required', 400);
+    }
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO consented_visits
+            (visitor_id, consent_version, page_path, referrer, timezone, screen, language, platform, user_agent, ip_hash, dnt, utm_source, utm_medium, utm_campaign)
+         VALUES
+            (:visitor_id, :consent_version, :page_path, :referrer, :timezone, :screen, :language, :platform, :user_agent, :ip_hash, :dnt, :utm_source, :utm_medium, :utm_campaign)'
+    );
+    $stmt->execute([
+        ':visitor_id' => $visitorId,
+        ':consent_version' => limit_string((string) ($body['consent_version'] ?? 'v1'), 24),
+        ':page_path' => limit_string((string) ($body['page_path'] ?? '/'), 255),
+        ':referrer' => limit_string((string) ($body['referrer'] ?? ''), 1024),
+        ':timezone' => limit_string((string) ($body['timezone'] ?? ''), 64),
+        ':screen' => limit_string((string) ($body['screen'] ?? ''), 32),
+        ':language' => limit_string((string) ($body['language'] ?? ''), 32),
+        ':platform' => limit_string((string) ($body['platform'] ?? ''), 64),
+        ':user_agent' => limit_string($_SERVER['HTTP_USER_AGENT'] ?? '', 400),
+        ':ip_hash' => client_ip_hash(),
+        ':dnt' => body_bool($body, 'dnt', false) ? 1 : 0,
+        ':utm_source' => limit_string((string) ($body['utm_source'] ?? ''), 80),
+        ':utm_medium' => limit_string((string) ($body['utm_medium'] ?? ''), 80),
+        ':utm_campaign' => limit_string((string) ($body['utm_campaign'] ?? ''), 80),
+    ]);
+
+    ok(['tracked' => true], 201);
+}
+
 if ($segments[0] === 'memes') {
     if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'public') {
         $limit = max(1, min(100, (int) ($_GET['limit'] ?? 20)));
@@ -229,6 +290,7 @@ if ($segments[0] === 'memes') {
     }
 
     if ($method === 'POST' && count($segments) === 1) {
+        assert_rate_limit($pdo, 'memes_create', 60, 3600, 600);
         $user = require_user($pdo);
         $body = json_input();
 
@@ -308,6 +370,7 @@ if ($segments[0] === 'memes') {
         }
 
         if (($method === 'PUT' || $method === 'PATCH') && count($segments) === 2) {
+            assert_rate_limit($pdo, 'memes_update', 180, 3600, 600);
             $body = json_input();
             $fields = [];
             $params = [':id' => $memeId];
@@ -358,6 +421,7 @@ if ($segments[0] === 'memes') {
         }
 
         if ($method === 'DELETE' && count($segments) === 2) {
+            assert_rate_limit($pdo, 'memes_delete', 80, 3600, 600);
             $stmt = $pdo->prepare('DELETE FROM memes WHERE id = :id');
             $stmt->execute([':id' => $memeId]);
             ok(['deleted' => true]);

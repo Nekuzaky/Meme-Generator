@@ -45,7 +45,20 @@ async function request<T>(
     ...options,
     headers,
   });
-  const body = (await res.json()) as ApiResponse<T>;
+  const rawBody = await res.text();
+  let body: ApiResponse<T> | null = null;
+  if (rawBody.trim() !== "") {
+    try {
+      body = JSON.parse(rawBody) as ApiResponse<T>;
+    } catch {
+      throw new Error(!res.ok ? `HTTP ${res.status}` : "Invalid API response");
+    }
+  }
+
+  if (!body) {
+    throw new Error(!res.ok ? `HTTP ${res.status}` : "Empty API response");
+  }
+
   if (!res.ok || body.ok === false) {
     throw new Error(body.error || `HTTP ${res.status}`);
   }

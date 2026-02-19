@@ -5,6 +5,7 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
 import Footer from "./components/Footer";
+import CookieConsent from "./components/CookieConsent";
 import Home from "./pages/Home";
 import ImageEditor from "./pages/ImageEditor";
 import Landing from "./pages/Landing";
@@ -38,6 +39,7 @@ export default function App() {
                 </div>
               </main>
               <Footer />
+              <CookieConsent />
             </div>
           </Router>
         </MemeProvider>

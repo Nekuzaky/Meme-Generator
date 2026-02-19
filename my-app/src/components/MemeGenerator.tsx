@@ -97,6 +97,7 @@ export default function MemeGenerator({
   const [showLayers, setShowLayers] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -527,7 +528,14 @@ export default function MemeGenerator({
   const buildMemeBlob = async () => {
     const node = document.getElementById("downloadMeme");
     if (!node) return null;
-    return domtoimage.toBlob(node);
+    setIsExporting(true);
+    try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      return await domtoimage.toBlob(node);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getBaseFileName = () => {
@@ -746,6 +754,7 @@ export default function MemeGenerator({
             textLayers={textLayers}
             selectedLayer={selectedLayer}
             showSelectionOutline={showLayers}
+            isExporting={isExporting}
             onSelectText={(index) =>
               setSelectedLayer({ type: "text", id: `text-${index}`, index })
             }

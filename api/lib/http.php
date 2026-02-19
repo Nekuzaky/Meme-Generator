@@ -5,9 +5,28 @@ declare(strict_types=1);
 function apply_cors(): void
 {
     $cors = config()['cors'];
-    header('Access-Control-Allow-Origin: ' . $cors['allow_origin']);
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowOrigins = $cors['allow_origins'] ?? ['*'];
+
+    if (in_array('*', $allowOrigins, true)) {
+        header('Access-Control-Allow-Origin: *');
+    } elseif ($origin !== '' && in_array($origin, $allowOrigins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+    } elseif (!empty($allowOrigins)) {
+        header('Access-Control-Allow-Origin: ' . $allowOrigins[0]);
+    }
+
     header('Access-Control-Allow-Methods: ' . $cors['allow_methods']);
     header('Access-Control-Allow-Headers: ' . $cors['allow_headers']);
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
     header('Content-Type: application/json; charset=utf-8');
 }
 
