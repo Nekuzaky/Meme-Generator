@@ -16,7 +16,7 @@ export default function Navbar() {
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [engagement, setEngagement] = useState(() => readEngagementSnapshot());
-  const languageLabel = language === "fr" ? "FR" : "EN";
+  const languageLabel = language.toUpperCase();
   const isDark = theme === "dark";
   const challengePercent = Math.round(
     (engagement.challengeProgress / engagement.challengeGoal) * 100
@@ -107,11 +107,16 @@ export default function Navbar() {
               <select
                 className={`bg-transparent text-xs outline-none ${selectTextClasses}`}
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as "fr" | "en")}
+                onChange={(e) =>
+                  setLanguage(e.target.value as "fr" | "en" | "de" | "it" | "ja")
+                }
                 aria-label={t("navbar.language")}
               >
                 <option value="fr">FR</option>
                 <option value="en">EN</option>
+                <option value="de">DE</option>
+                <option value="it">IT</option>
+                <option value="ja">JA</option>
               </select>
             </div>
 

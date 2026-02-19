@@ -4,8 +4,10 @@ import {
   API_TOKEN_KEY,
   deleteMemeApi,
   getMeApi,
+  getModerationMemesApi,
   getMyMemesApi,
   loginApi,
+  moderateMemeApi,
   logoutApi,
   registerApi,
   updateMemeApi,
@@ -39,6 +41,11 @@ export default function Profile() {
             loading: "Chargement...",
             authError: "Impossible de se connecter pour le moment.",
             profileError: "Impossible de charger le profil.",
+            moderation: "Moderation",
+            moderationEmpty: "Aucun contenu en attente.",
+            approve: "Approuver",
+            reject: "Rejeter",
+            status: "Statut",
           }
         : {
             title: "Profile",
@@ -61,6 +68,11 @@ export default function Profile() {
             loading: "Loading...",
             authError: "Unable to authenticate right now.",
             profileError: "Unable to load profile.",
+            moderation: "Moderation",
+            moderationEmpty: "No content pending review.",
+            approve: "Approve",
+            reject: "Reject",
+            status: "Status",
           },
     [language]
   );
@@ -75,7 +87,9 @@ export default function Profile() {
     null
   );
   const [memes, setMemes] = useState<ApiMeme[]>([]);
+  const [moderationQueue, setModerationQueue] = useState<ApiMeme[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isModerationLoading, setIsModerationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = async (activeToken: string) => {
@@ -83,6 +97,17 @@ export default function Profile() {
     setUser(me.user);
     setStats(me.stats);
     setMemes(mine.items);
+    if (me.user.is_admin) {
+      setIsModerationLoading(true);
+      try {
+        const moderation = await getModerationMemesApi(activeToken, { status: "pending", limit: 20 });
+        setModerationQueue(moderation.items);
+      } finally {
+        setIsModerationLoading(false);
+      }
+    } else {
+      setModerationQueue([]);
+    }
   };
 
   useEffect(() => {
@@ -132,6 +157,7 @@ export default function Profile() {
     setUser(null);
     setStats(null);
     setMemes([]);
+    setModerationQueue([]);
   };
 
   const toggleVisibility = async (meme: ApiMeme) => {
@@ -161,6 +187,16 @@ export default function Profile() {
             }
           : prev
       );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : labels.profileError);
+    }
+  };
+
+  const moderateItem = async (id: number, status: "approved" | "rejected") => {
+    if (!token) return;
+    try {
+      await moderateMemeApi(token, id, { status });
+      setModerationQueue((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : labels.profileError);
     }
@@ -286,6 +322,9 @@ export default function Profile() {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-100">{meme.title}</p>
                       <p>{new Date(meme.created_at).toLocaleString()}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                        {labels.status}: {meme.moderation_status ?? "pending"}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -308,6 +347,48 @@ export default function Profile() {
               </div>
             )}
           </div>
+          {user?.is_admin && (
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-sm font-semibold text-slate-100">{labels.moderation}</p>
+              {isModerationLoading ? (
+                <p className="mt-3 text-xs text-slate-400">{labels.loading}</p>
+              ) : moderationQueue.length === 0 ? (
+                <p className="mt-3 text-xs text-slate-400">{labels.moderationEmpty}</p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2">
+                  {moderationQueue.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-100">{item.title}</p>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                          {labels.status}: {item.moderation_status ?? "pending"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moderateItem(item.id, "approved")}
+                          className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-200"
+                        >
+                          {labels.approve}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moderateItem(item.id, "rejected")}
+                          className="rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-1 font-semibold text-rose-200"
+                        >
+                          {labels.reject}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {error && <p className="text-xs text-rose-300">{error}</p>}
         </div>
       )}

@@ -7,6 +7,7 @@ export interface ApiUser {
   username: string;
   email: string;
   created_at?: string;
+  is_admin?: boolean;
 }
 
 export interface ApiMeme {

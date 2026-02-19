@@ -957,6 +957,35 @@ export default function MemeGenerator({
   const canUndo = historyRef.current.length > 1;
   const canRedo = futureRef.current.length > 0;
   const captionIndexes = Array.from({ length: boxesCount }, (_, index) => index);
+  const autosaveText =
+    autosaveState === "saving"
+      ? language === "fr"
+        ? "Autosave cloud..."
+        : "Cloud autosaving..."
+      : autosaveState === "saved"
+        ? language === "fr"
+          ? "Autosave synchronise."
+          : "Autosave synced."
+        : autosaveState === "error"
+          ? language === "fr"
+            ? "Autosave en erreur."
+            : "Autosave failed."
+          : language === "fr"
+            ? "Autosave inactif."
+            : "Autosave idle.";
+  const cloudTitle = language === "fr" ? "Cloud & versions" : "Cloud & versions";
+  const aiTitle = language === "fr" ? "Assistant IA meme" : "AI meme assistant";
+  const aiPlaceholder =
+    language === "fr"
+      ? "Theme (ex: lundi matin, ecole, travail...)"
+      : "Topic (e.g. monday morning, school, work...)";
+  const aiButton = isGeneratingAi
+    ? language === "fr"
+      ? "Generation..."
+      : "Generating..."
+    : language === "fr"
+      ? "Generer des captions"
+      : "Generate captions";
 
   return (
     <div className="glass-card w-full p-6 md:p-8">
@@ -1090,6 +1119,99 @@ export default function MemeGenerator({
             </div>
 
             {shareStatus && <p className="text-xs text-slate-300">{shareStatus}</p>}
+
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-100">{cloudTitle}</p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowVersions((prev) => !prev);
+                    if (!showVersions) {
+                      await loadVersions();
+                    }
+                  }}
+                  className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-slate-200"
+                >
+                  {showVersions ? t("generator.less") : t("generator.more")}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">{autosaveText}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={saveManualVersion}
+                  disabled={!cloudMemeId}
+                  className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-fuchsia-400/60 disabled:opacity-40"
+                >
+                  {language === "fr" ? "Sauver version" : "Save version"}
+                </button>
+                <button
+                  type="button"
+                  onClick={loadVersions}
+                  disabled={!cloudMemeId || isLoadingVersions}
+                  className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-fuchsia-400/60 disabled:opacity-40"
+                >
+                  {isLoadingVersions
+                    ? language === "fr"
+                      ? "Chargement..."
+                      : "Loading..."
+                    : language === "fr"
+                      ? "Rafraichir versions"
+                      : "Refresh versions"}
+                </button>
+              </div>
+
+              {showVersions && (
+                <div className="mt-3 flex max-h-52 flex-col gap-2 overflow-y-auto pr-1">
+                  {versions.length === 0 ? (
+                    <p className="text-xs text-slate-400">
+                      {language === "fr" ? "Aucune version cloud." : "No cloud versions yet."}
+                    </p>
+                  ) : (
+                    versions.map((version) => (
+                      <div
+                        key={version.id}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200"
+                      >
+                        <span className="truncate">
+                          {version.version_label || version.change_source} -{" "}
+                          {new Date(version.created_at).toLocaleString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => restoreVersion(version.id)}
+                          className="rounded-full border border-white/10 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:border-fuchsia-400/60"
+                        >
+                          {language === "fr" ? "Restaurer" : "Restore"}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-sm font-semibold text-slate-100">{aiTitle}</p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={aiTopic}
+                  onChange={(event) => setAiTopic(event.target.value)}
+                  placeholder={aiPlaceholder}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={generateAiCaptions}
+                  disabled={isGeneratingAi}
+                  className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-fuchsia-400/60 disabled:opacity-50"
+                >
+                  {aiButton}
+                </button>
+              </div>
+              {aiStatus ? <p className="mt-2 text-xs text-slate-400">{aiStatus}</p> : null}
+            </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
               <div className="flex items-center justify-between">

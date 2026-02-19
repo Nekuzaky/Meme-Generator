@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-export type Language = "fr" | "en";
+export type Language = "fr" | "en" | "de" | "it" | "ja";
 
 type TranslationParams = Record<string, string | number>;
 
-const translations = {
+const translations: Record<Language, Record<string, string>> = {
   fr: {
     "brand.name": "Meme Creator",
     "brand.tagline": "Crée, personnalise et télécharge en un clic",
@@ -389,12 +389,72 @@ const translations = {
     "onboarding.next": "Next",
     "onboarding.done": "Done",
   },
+  de: {
+    "navbar.home": "Start",
+    "navbar.creator": "Meme-Creator",
+    "navbar.editor": "Bildeditor",
+    "navbar.profile": "Profil",
+    "navbar.language": "Sprache",
+    "navbar.theme": "Thema",
+    "theme.light": "Hell",
+    "theme.dark": "Dunkel",
+    "landing.kicker": "Willkommen",
+    "landing.title": "Wahle deinen Kreativbereich",
+    "landing.subtitle":
+      "Erstelle Memes, bearbeite Bilder und teile in sozialen Formaten.",
+    "landing.creator.cta": "Creator offnen",
+    "landing.editor.cta": "Editor offnen",
+    "meme.generate": "Meme generieren",
+    "generator.download": "Download",
+    "generator.share": "Teilen",
+    "generator.saveProfile": "Im Profil speichern",
+  },
+  it: {
+    "navbar.home": "Home",
+    "navbar.creator": "Creatore meme",
+    "navbar.editor": "Editor immagini",
+    "navbar.profile": "Profilo",
+    "navbar.language": "Lingua",
+    "navbar.theme": "Tema",
+    "theme.light": "Chiaro",
+    "theme.dark": "Scuro",
+    "landing.kicker": "Benvenuto",
+    "landing.title": "Scegli il tuo spazio creativo",
+    "landing.subtitle":
+      "Crea meme, modifica immagini e condividi nei formati social.",
+    "landing.creator.cta": "Apri creatore",
+    "landing.editor.cta": "Apri editor",
+    "meme.generate": "Genera meme",
+    "generator.download": "Scarica",
+    "generator.share": "Condividi",
+    "generator.saveProfile": "Salva nel profilo",
+  },
+  ja: {
+    "navbar.home": "ホーム",
+    "navbar.creator": "ミーム作成",
+    "navbar.editor": "画像編集",
+    "navbar.profile": "プロフィール",
+    "navbar.language": "言語",
+    "navbar.theme": "テーマ",
+    "theme.light": "ライト",
+    "theme.dark": "ダーク",
+    "landing.kicker": "ようこそ",
+    "landing.title": "作成モードを選択",
+    "landing.subtitle":
+      "ミーム作成、画像編集、SNS向け書き出しを1つの場所で。",
+    "landing.creator.cta": "作成を開く",
+    "landing.editor.cta": "編集を開く",
+    "meme.generate": "ミーム生成",
+    "generator.download": "ダウンロード",
+    "generator.share": "共有",
+    "generator.saveProfile": "プロフィール保存",
+  },
 };
 
 type LanguageContextValue = {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: keyof (typeof translations)["fr"], params?: TranslationParams) => string;
+  t: (key: string, params?: TranslationParams) => string;
 };
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(
@@ -413,7 +473,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("meme-creator-language");
-    if (saved === "fr" || saved === "en") {
+    if (saved === "fr" || saved === "en" || saved === "de" || saved === "it" || saved === "ja") {
       setLanguage(saved);
     }
   }, []);
@@ -426,7 +486,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     () => ({
       language,
       setLanguage,
-      t: (key, params) => interpolate(translations[language][key], params),
+      t: (key, params) =>
+        interpolate(translations[language][key] ?? translations.en[key] ?? key, params),
     }),
     [language]
   );

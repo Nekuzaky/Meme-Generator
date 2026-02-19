@@ -13,7 +13,7 @@ interface AdBannerProps {
 }
 
 export default function AdBanner({
-  slot = "0000000000",
+  slot = "5741036671",
   className = "",
 }: AdBannerProps) {
   const { t } = useLanguage();

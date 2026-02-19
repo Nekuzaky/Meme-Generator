@@ -12,10 +12,13 @@ import {
 } from "react-icons/md";
 import { useLanguage } from "../context/LanguageContext";
 import { readEngagementSnapshot } from "../lib/engagement";
+import { getPublicMemesApi, type ApiMeme } from "../lib/api";
 
 export default function Landing() {
   const { t, language } = useLanguage();
   const [engagement, setEngagement] = useState(() => readEngagementSnapshot());
+  const [publicMemes, setPublicMemes] = useState<ApiMeme[]>([]);
+  const [publicLoading, setPublicLoading] = useState(false);
   const challengePercent = Math.round(
     (engagement.challengeProgress / engagement.challengeGoal) * 100
   );
@@ -28,6 +31,18 @@ export default function Landing() {
       window.removeEventListener("focus", refresh);
       window.removeEventListener("storage", refresh);
     };
+  }, []);
+
+  useEffect(() => {
+    setPublicLoading(true);
+    getPublicMemesApi({ limit: 8 })
+      .then((response) => {
+        setPublicMemes(response.items);
+      })
+      .catch(() => {
+        setPublicMemes([]);
+      })
+      .finally(() => setPublicLoading(false));
   }, []);
 
   const copy =
@@ -72,6 +87,10 @@ export default function Landing() {
             "Lien + QR pour partager en 2 secondes",
             "Profil cloud pour sauvegarder tes meilleurs formats",
           ],
+          publicTitle: "Memes publics recents",
+          publicSubtitle: "Ouvre, partage ou remixe les creations de la communaute.",
+          remix: "Remix",
+          view: "Voir",
         }
       : {
           chips: ["No signup", "One-click social export", "Mobile optimized"],
@@ -113,7 +132,40 @@ export default function Landing() {
             "Link + QR sharing in under 2 seconds",
             "Cloud profile to save your best formats",
           ],
+          publicTitle: "Recent public memes",
+          publicSubtitle: "Open, share, or remix creations from the community.",
+          remix: "Remix",
+          view: "View",
         };
+
+  const buildRemixLink = (meme: ApiMeme) => {
+    const payload = meme.payload as
+      | {
+          version?: number;
+          activeImageUrl?: string;
+          activeImageName?: string;
+          boxesCount?: number;
+          boxes?: unknown[];
+          textLayers?: unknown[];
+          stickers?: unknown[];
+        }
+      | null
+      | undefined;
+    if (
+      payload &&
+      payload.version === 1 &&
+      typeof payload.activeImageUrl === "string" &&
+      Array.isArray(payload.boxes) &&
+      Array.isArray(payload.textLayers) &&
+      Array.isArray(payload.stickers)
+    ) {
+      const encoded = encodeURIComponent(
+        btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+      );
+      return `/creator?memeShare=${encoded}`;
+    }
+    return `/m/${meme.id}`;
+  };
 
   return (
     <section className="glass-card relative w-full overflow-hidden p-6 md:p-10">
@@ -310,6 +362,62 @@ export default function Landing() {
             ))}
           </div>
         </article>
+      </div>
+
+      <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xl font-semibold text-slate-100">{copy.publicTitle}</h3>
+          <p className="text-sm text-slate-300">{copy.publicSubtitle}</p>
+        </div>
+        {publicLoading ? (
+          <p className="mt-4 text-xs text-slate-400">{language === "fr" ? "Chargement..." : "Loading..."}</p>
+        ) : publicMemes.length === 0 ? (
+          <p className="mt-4 text-xs text-slate-400">
+            {language === "fr" ? "Aucun meme public pour le moment." : "No public memes yet."}
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {publicMemes.map((meme) => {
+              const preview = meme.generated_image_url || meme.source_image_url || "";
+              return (
+                <div
+                  key={meme.id}
+                  className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/70"
+                >
+                  {preview ? (
+                    <img
+                      src={preview}
+                      alt={meme.title}
+                      className="h-36 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-36 items-center justify-center text-xs text-slate-500">
+                      No preview
+                    </div>
+                  )}
+                  <div className="space-y-2 p-3">
+                    <p className="truncate text-sm font-semibold text-slate-100">{meme.title}</p>
+                    <p className="text-[11px] text-slate-400">{meme.username ?? "Creator"}</p>
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/m/${meme.id}`}
+                        className="rounded-full border border-white/10 bg-slate-900/70 px-2 py-1 text-[11px] font-semibold text-slate-200"
+                      >
+                        {copy.view}
+                      </Link>
+                      <Link
+                        to={buildRemixLink(meme)}
+                        className="rounded-full border border-fuchsia-400/40 bg-fuchsia-500/10 px-2 py-1 text-[11px] font-semibold text-fuchsia-100"
+                      >
+                        {copy.remix}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
