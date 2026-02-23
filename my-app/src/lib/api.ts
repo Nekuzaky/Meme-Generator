@@ -1,6 +1,6 @@
 export const API_TOKEN_KEY = "meme-creator-api-token";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
 export interface ApiUser {
   id: number;
@@ -37,6 +37,29 @@ export interface ApiMemeVersion {
   created_by_user_id?: number | null;
 }
 
+export interface ApiModerationReport {
+  id: number;
+  meme_id: number;
+  reporter_user_id?: number | null;
+  reason: string;
+  details?: string | null;
+  status: "open" | "reviewed" | "dismissed";
+  reviewed_by_user_id?: number | null;
+  resolution_note?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  title?: string;
+  user_id?: number;
+  reporter_username?: string | null;
+}
+
+export interface ApiBlacklistTerm {
+  id: number;
+  term: string;
+  is_active: boolean | number;
+  created_at: string;
+}
+
 export interface ApiMemeSuggestion {
   top: string;
   bottom: string;
@@ -46,6 +69,53 @@ type ApiResponse<T> = {
   ok: boolean;
   error?: string;
 } & T;
+
+function tryParseJson<T>(raw: string): ApiResponse<T> | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+
+  try {
+    return JSON.parse(trimmed) as ApiResponse<T>;
+  } catch {
+    // Continue with fallback extraction below.
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    return null;
+  }
+
+  const candidate = trimmed.slice(firstBrace, lastBrace + 1);
+  try {
+    return JSON.parse(candidate) as ApiResponse<T>;
+  } catch {
+    return null;
+  }
+}
+
+function buildApiCandidates(path: string): string[] {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const queryIndex = normalizedPath.indexOf("?");
+  const pathname =
+    queryIndex >= 0 ? normalizedPath.slice(0, queryIndex) : normalizedPath;
+  const queryString = queryIndex >= 0 ? normalizedPath.slice(queryIndex + 1) : "";
+  const routePath = pathname.replace(/^\/+/, "");
+  const querySuffix = queryString ? `?${queryString}` : "";
+  const candidates = [`${API_BASE}${pathname}${querySuffix}`];
+
+  const params = new URLSearchParams(queryString);
+  params.set("_path", routePath);
+  const indexPhpQuerySuffix = `?${params.toString()}`;
+
+  if (API_BASE.toLowerCase().endsWith("/index.php")) {
+    candidates.push(`${API_BASE}${indexPhpQuerySuffix}`);
+  } else {
+    candidates.push(`${API_BASE}/index.php${pathname}${querySuffix}`);
+    candidates.push(`${API_BASE}/index.php${indexPhpQuerySuffix}`);
+  }
+  return Array.from(new Set(candidates));
+}
 
 async function request<T>(
   path: string,
@@ -58,28 +128,54 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-  const rawBody = await res.text();
-  let body: ApiResponse<T> | null = null;
-  if (rawBody.trim() !== "") {
+  const candidates = buildApiCandidates(path);
+  let lastNetworkError: Error | null = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const isLastCandidate = index === candidates.length - 1;
+    const candidate = candidates[index];
+
+    let res: Response;
     try {
-      body = JSON.parse(rawBody) as ApiResponse<T>;
-    } catch {
+      res = await fetch(candidate, {
+        ...options,
+        headers,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        lastNetworkError = error;
+      }
+      if (!isLastCandidate) {
+        continue;
+      }
+      throw lastNetworkError ?? new Error("Network error");
+    }
+
+    const rawBody = await res.text();
+    const body = tryParseJson<T>(rawBody);
+
+    if (res.status === 404 && !isLastCandidate) {
+      continue;
+    }
+
+    if (!body && rawBody.trim() !== "") {
+      if (/<html[\s>]/i.test(rawBody)) {
+        throw new Error(!res.ok ? `HTTP ${res.status}` : "API returned HTML instead of JSON");
+      }
       throw new Error(!res.ok ? `HTTP ${res.status}` : "Invalid API response");
     }
+
+    if (!body) {
+      throw new Error(!res.ok ? `HTTP ${res.status}` : "Empty API response");
+    }
+
+    if (!res.ok || body.ok === false) {
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return body;
   }
 
-  if (!body) {
-    throw new Error(!res.ok ? `HTTP ${res.status}` : "Empty API response");
-  }
-
-  if (!res.ok || body.ok === false) {
-    throw new Error(body.error || `HTTP ${res.status}`);
-  }
-  return body;
+  throw lastNetworkError ?? new Error("HTTP 404");
 }
 
 export async function registerApi(params: {
@@ -284,6 +380,71 @@ export async function moderateMemeApi(
   return request<{ updated: boolean }>(
     `/moderation/memes/${id}`,
     { method: "PATCH", body: JSON.stringify(payload) },
+    token
+  );
+}
+
+export async function getModerationReportsApi(
+  token: string,
+  params?: {
+    status?: "open" | "reviewed" | "dismissed" | "all";
+    limit?: number;
+    offset?: number;
+  }
+) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request<{ items: ApiModerationReport[] }>(
+    `/moderation/reports${suffix}`,
+    { method: "GET" },
+    token
+  );
+}
+
+export async function reviewModerationReportApi(
+  token: string,
+  id: number | string,
+  payload: {
+    status: "open" | "reviewed" | "dismissed";
+    resolution_note?: string;
+  }
+) {
+  return request<{ updated: boolean }>(
+    `/moderation/reports/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token
+  );
+}
+
+export async function getModerationBlacklistApi(token: string) {
+  return request<{ items: ApiBlacklistTerm[] }>(
+    "/moderation/blacklist",
+    { method: "GET" },
+    token
+  );
+}
+
+export async function createModerationBlacklistApi(
+  token: string,
+  payload: { term: string }
+) {
+  return request<{ created: boolean }>(
+    "/moderation/blacklist",
+    { method: "POST", body: JSON.stringify(payload) },
+    token
+  );
+}
+
+export async function deleteModerationBlacklistApi(
+  token: string,
+  id: number | string
+) {
+  return request<{ deleted: boolean }>(
+    `/moderation/blacklist/${id}`,
+    { method: "DELETE" },
     token
   );
 }

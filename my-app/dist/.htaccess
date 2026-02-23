@@ -1,0 +1,17 @@
+RewriteEngine On
+
+# Keep API requests handled by API .htaccess
+RewriteRule ^api/ - [L]
+
+# Real social previews for /m/:id (bot-only rendering)
+RewriteCond %{REQUEST_URI} ^/m/[0-9]+/?$ [NC]
+RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|Googlebot|bingbot|DuckDuckBot) [NC]
+RewriteRule ^m/([0-9]+)/?$ /api/meme_og.php?id=$1 [QSA,L]
+
+# Existing static files
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# SPA fallback
+RewriteRule ^ index.html [L]

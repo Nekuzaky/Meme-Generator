@@ -6,7 +6,22 @@ function config(): array
 {
     static $config = null;
     if ($config === null) {
-        $config = require __DIR__ . '/../config.php';
+        $basePath = __DIR__ . '/../config.php';
+        $localPath = __DIR__ . '/../config.local.php';
+
+        $base = is_file($basePath) ? require $basePath : [];
+        if (!is_array($base)) {
+            $base = [];
+        }
+
+        if (is_file($localPath)) {
+            $local = require $localPath;
+            if (is_array($local)) {
+                $base = array_replace_recursive($base, $local);
+            }
+        }
+
+        $config = $base;
     }
     return $config;
 }

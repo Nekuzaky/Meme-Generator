@@ -12,6 +12,8 @@ API backend for `meme.altcore.fr/api/`.
 6. Set a long random value for `security.ip_hash_secret` in `config.php`.
 7. Set `security.admin_emails` for moderation access.
 8. Optional AI: set `ai.openai_api_key` (fallback local generator works without key).
+9. Set `app.public_base_url` to your production frontend URL for OG rendering (e.g. `https://meme.altcore.fr`).
+10. Copy `config.local.php.exemple` to `config.local.php` and put all secrets there (file ignored by Git).
 
 ## Auth flow
 
@@ -24,6 +26,38 @@ Use header:
 
 ```http
 Authorization: Bearer <token>
+```
+
+## Mail system (SMTP)
+
+Configured for Infomaniak style settings:
+- SMTP host: `mail.infomaniak.com`
+- SMTP port: `587` with `starttls`
+- IMAP host: `mail.infomaniak.com`
+- IMAP port: `993` with `ssl`
+
+Routes:
+- `POST /api/mail/contact` (public, rate-limited)
+- `POST /api/mail/test` (admin)
+
+Contact payload:
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "subject": "Support request",
+  "message": "Hello team..."
+}
+```
+
+Test payload (admin):
+
+```json
+{
+  "to": "contact@altcore.fr",
+  "subject": "SMTP check"
+}
 ```
 
 ## Meme routes
@@ -55,6 +89,12 @@ Authorization: Bearer <token>
 - `POST /api/moderation/blacklist`
 - `DELETE /api/moderation/blacklist/{id}`
 
+## Server OG rendering
+
+- `api/meme_og.php` serves dynamic Open Graph meta for public approved memes.
+- Frontend Apache rewrite (`my-app/public/.htaccess`) routes social bots on `/m/{id}` to this PHP script.
+- Human visitors keep SPA routing to React for `/m/:id`.
+
 ## Security notes
 
 - Tokens are random and only stored as SHA-256 hashes.
@@ -62,6 +102,7 @@ Authorization: Bearer <token>
 - API sends security headers (`nosniff`, `frame deny`, HSTS on HTTPS).
 - Telemetry stores `ip_hash` (HMAC) instead of raw IP.
 - Public feed only shows `is_public=1` and `moderation_status=approved`.
+- Keep `api/config.local.php` outside Git; only commit `*.exemple` templates.
 
 ## Example payload (create meme)
 

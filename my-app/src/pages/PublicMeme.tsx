@@ -352,7 +352,7 @@ export default function PublicMeme() {
           </div>
         </div>
 
-        <AdBanner slot="5741036671" />
+        <AdBanner />
       </div>
     </section>
   );

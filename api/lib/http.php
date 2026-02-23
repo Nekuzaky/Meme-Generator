@@ -43,7 +43,20 @@ function json_input(): array
 function json_response(array $payload, int $status = 200): never
 {
     http_response_code($status);
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if (function_exists('ob_get_level') && function_exists('ob_clean')) {
+        $level = ob_get_level();
+        if (is_int($level) && $level > 0) {
+            @ob_clean();
+        }
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        http_response_code(500);
+        $json = '{"ok":false,"error":"JSON encode failed"}';
+    }
+    echo $json;
     exit;
 }
 
@@ -59,6 +72,18 @@ function ok(array $data = [], int $status = 200): never
 
 function route_segments(): array
 {
+    $forced = $_GET['_path'] ?? '';
+    if (is_string($forced) && trim($forced) !== '') {
+        $parts = array_values(array_filter(explode('/', trim($forced, '/'))));
+        if (!empty($parts) && $parts[0] === 'api') {
+            array_shift($parts);
+        }
+        if (!empty($parts) && $parts[0] === 'index.php') {
+            array_shift($parts);
+        }
+        return $parts;
+    }
+
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
     $parts = array_values(array_filter(explode('/', trim($path, '/'))));
     if (!empty($parts) && $parts[0] === 'api') {

@@ -59,6 +59,14 @@ cd my-app
 npm install
 ```
 
+**Step 3.1: Configurer les variables d'environnement (API + Ads)**
+
+```bash
+cp .env.example .env
+```
+
+Puis adapte `VITE_API_BASE_URL` selon ton serveur (ex: `https://meme.altcore.fr/api`).
+
 **Step 4: Lancer le projet** 
 
 ```bash

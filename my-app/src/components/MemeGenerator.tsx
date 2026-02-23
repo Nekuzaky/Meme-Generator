@@ -124,6 +124,7 @@ export default function MemeGenerator({
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
+  const historyTimerRef = useRef<number | null>(null);
   const skipHistoryRef = useRef(false);
   const shareLoadedRef = useRef(false);
   const autosaveTimerRef = useRef<number | null>(null);
@@ -304,15 +305,29 @@ export default function MemeGenerator({
       skipHistoryRef.current = false;
       return;
     }
-    const snapshot = createSnapshot();
-    const last = historyRef.current[historyRef.current.length - 1];
-    const unchanged = last && JSON.stringify(last) === JSON.stringify(snapshot);
-    if (unchanged) return;
-    historyRef.current.push(snapshot);
-    if (historyRef.current.length > 80) {
-      historyRef.current.shift();
+
+    if (historyTimerRef.current) {
+      window.clearTimeout(historyTimerRef.current);
     }
-    futureRef.current = [];
+
+    historyTimerRef.current = window.setTimeout(() => {
+      const snapshot = createSnapshot();
+      const last = historyRef.current[historyRef.current.length - 1];
+      const unchanged = last && JSON.stringify(last) === JSON.stringify(snapshot);
+      if (unchanged) return;
+      historyRef.current.push(snapshot);
+      if (historyRef.current.length > 80) {
+        historyRef.current.shift();
+      }
+      futureRef.current = [];
+    }, 120);
+
+    return () => {
+      if (historyTimerRef.current) {
+        window.clearTimeout(historyTimerRef.current);
+        historyTimerRef.current = null;
+      }
+    };
   }, [activeImageUrl, activeImageName, boxesCount, boxes, textLayers, stickers]);
 
   useEffect(() => {

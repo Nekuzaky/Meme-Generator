@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    // This file is ignored by Git.
+    // Copy to: api/config.local.php
+    // Put all sensitive credentials here.
+
+    'db' => [
+        'host' => '9b6po.myd.infomaniak.com',
+        'port' => 3306,
+        'name' => '9b6po_memegenerator',
+        'user' => '9b6po_neku',
+        'pass' => 'replace-with-db-password',
+        'charset' => 'utf8mb4',
+    ],
+
+    'mail' => [
+        'enabled' => true,
+        'from_email' => 'contact@altcore.fr',
+        'from_name' => 'Meme Generator (meme.altcore.fr)',
+        'support_to' => 'contact@altcore.fr',
+        'reply_to' => 'contact@altcore.fr',
+        'smtp' => [
+            'host' => 'mail.infomaniak.com',
+            'port' => 587,
+            'username' => 'contact@altcore.fr',
+            'password' => 'replace-with-smtp-password',
+            'encryption' => 'starttls',
+            'timeout' => 15,
+        ],
+        'imap' => [
+            'host' => 'mail.infomaniak.com',
+            'port' => 993,
+            'username' => 'contact@altcore.fr',
+            'password' => 'replace-with-imap-password',
+            'encryption' => 'ssl',
+        ],
+    ],
+
+    'security' => [
+        'ip_hash_secret' => 'replace-with-long-random-secret',
+        'admin_emails' => [
+            'contact@altcore.fr',
+        ],
+    ],
+];

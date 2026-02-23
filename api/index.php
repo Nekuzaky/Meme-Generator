@@ -2,10 +2,18 @@
 
 declare(strict_types=1);
 
+if (function_exists('ob_start')) {
+    ob_start();
+}
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('html_errors', '0');
+
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/security.php';
+require __DIR__ . '/lib/mail.php';
 
 apply_cors();
 
@@ -13,18 +21,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     ok(['preflight' => true]);
 }
 
-$pdo = db();
+$pdo = null;
+try {
+    $pdo = db();
+} catch (Throwable $e) {
+    fail('Database unavailable. Check api/config.local.php and schema import.', 500);
+}
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $segments = route_segments();
 
 if (empty($segments)) {
     ok([
         'service' => 'Meme Generator API',
-        'version' => '1.2.0',
+        'version' => '1.3.0',
         'routes' => [
             'POST /api/auth/register',
             'POST /api/auth/login',
             'POST /api/auth/logout',
+            'POST /api/mail/contact',
+            'POST /api/mail/test',
             'GET  /api/me',
             'GET  /api/me/favorites',
             'GET  /api/memes/public',
@@ -495,6 +510,74 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
             revoke_token($pdo, $token);
         }
         ok(['logged_out' => true]);
+    }
+}
+
+if ($segments[0] === 'mail' && count($segments) >= 2) {
+    $action = $segments[1];
+    $body = json_input();
+
+    if ($method === 'POST' && $action === 'contact') {
+        assert_rate_limit($pdo, 'mail_contact', 20, 3600, 900);
+
+        $name = body_string($body, 'name', 80, '');
+        $email = utf8_strtolower(body_string($body, 'email', 190, ''));
+        $subject = body_string($body, 'subject', 120, '');
+        $message = body_string($body, 'message', 3000, '');
+
+        if ($name === '' || !mail_validate_email($email) || $subject === '' || utf8_strlen($message) < 8) {
+            fail('Invalid contact payload', 400);
+        }
+
+        $mailCfg = mail_cfg();
+        $to = $mailCfg['support_to'] !== '' ? $mailCfg['support_to'] : $mailCfg['from_email'];
+        if (!mail_validate_email($to)) {
+            fail('Mail receiver is not configured', 500);
+        }
+
+        try {
+            send_app_email([
+                'to_email' => $to,
+                'to_name' => 'Meme Generator Support',
+                'subject' => '[Meme Generator] Contact: ' . $subject,
+                'text' => "From: {$name} <{$email}>\n\n{$message}",
+                'html' => '<p><strong>From:</strong> ' . htmlspecialchars($name . ' <' . $email . '>', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
+                    . '<p><strong>Message:</strong></p><p>' . nl2br(htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) . '</p>',
+                'reply_to' => $email,
+            ]);
+        } catch (Throwable $e) {
+            fail('Unable to send email right now', 500);
+        }
+
+        ok(['sent' => true]);
+    }
+
+    if ($method === 'POST' && $action === 'test') {
+        $admin = require_admin($pdo);
+
+        $mailCfg = mail_cfg();
+        $target = utf8_strtolower(body_string($body, 'to', 190, (string) ($admin['email'] ?? '')));
+        if (!mail_validate_email($target)) {
+            fail('Invalid target email', 400);
+        }
+
+        $subject = body_string($body, 'subject', 120, 'SMTP test');
+        $text = "This is a test email from Meme Generator API.\n\nTime: " . gmdate('c');
+
+        try {
+            send_app_email([
+                'to_email' => $target,
+                'to_name' => (string) ($admin['username'] ?? 'Admin'),
+                'subject' => '[Meme Generator] ' . $subject,
+                'text' => $text,
+                'html' => '<p>This is a test email from <strong>Meme Generator API</strong>.</p><p>Time: ' . htmlspecialchars(gmdate('c'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>',
+                'reply_to' => $mailCfg['reply_to'] !== '' ? $mailCfg['reply_to'] : $mailCfg['from_email'],
+            ]);
+        } catch (Throwable $e) {
+            fail('Unable to send test email right now', 500);
+        }
+
+        ok(['sent' => true, 'to' => $target]);
     }
 }
 

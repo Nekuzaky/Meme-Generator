@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 return [
-    // Database credentials
+    // Base config template.
+    // Put real secrets in config.local.php (ignored by Git).
     'db' => [
         'host' => 'your_host_here',
         'port' => 3306,
@@ -25,6 +26,32 @@ return [
         'allow_methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'allow_headers' => 'Content-Type, Authorization',
     ],
+    'app' => [
+        // Public web URL used for OG server rendering and canonical links
+        'public_base_url' => 'https://meme.altcore.fr',
+    ],
+    'mail' => [
+        'enabled' => true,
+        'from_email' => 'contact@altcore.fr',
+        'from_name' => 'Meme Generator (meme.altcore.fr)',
+        'support_to' => 'contact@altcore.fr',
+        'reply_to' => 'contact@altcore.fr',
+        'smtp' => [
+            'host' => 'mail.infomaniak.com',
+            'port' => 587,
+            'username' => 'contact@altcore.fr',
+            'password' => 'replace-with-smtp-password',
+            'encryption' => 'starttls', // starttls | ssl | none
+            'timeout' => 15,
+        ],
+        'imap' => [
+            'host' => 'mail.infomaniak.com',
+            'port' => 993,
+            'username' => 'contact@altcore.fr',
+            'password' => 'replace-with-imap-password',
+            'encryption' => 'ssl',
+        ],
+    ],
     'security' => [
         'ip_hash_secret' => 'replace-with-long-random-secret',
         'admin_emails' => [
@@ -38,4 +65,4 @@ return [
     ],
 ];
 
-// Note this is a template file. Please copy it to config.php and fill in the actual values.
+// Note this is a template file. Copy to config.php and keep sensitive overrides in config.local.php.

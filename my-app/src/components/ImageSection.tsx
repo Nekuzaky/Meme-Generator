@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Rnd } from "react-rnd";
 import { useMeme } from "../context/MemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -62,40 +62,59 @@ export default function ImageSection({
   const { boxes, clearBoxes } = useMeme();
 
   const getTop = (index: number) => 70 * index;
-  const resizeHandleStyles = {
-    bottomRight: {
-      width: "20px",
-      height: "20px",
-      right: "-8px",
-      bottom: "-8px",
-      borderRadius: "999px",
-      background: "rgba(244, 114, 182, 0.85)",
-    },
-    bottomLeft: {
-      width: "20px",
-      height: "20px",
-      left: "-8px",
-      bottom: "-8px",
-      borderRadius: "999px",
-      background: "rgba(244, 114, 182, 0.85)",
-    },
-    topRight: {
-      width: "20px",
-      height: "20px",
-      right: "-8px",
-      top: "-8px",
-      borderRadius: "999px",
-      background: "rgba(244, 114, 182, 0.85)",
-    },
-    topLeft: {
-      width: "20px",
-      height: "20px",
-      left: "-8px",
-      top: "-8px",
-      borderRadius: "999px",
-      background: "rgba(244, 114, 182, 0.85)",
-    },
-  };
+  const isTouchDevice = useMemo(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+    return window.matchMedia("(pointer: coarse)").matches;
+  }, []);
+  const handleSize = isTouchDevice ? 28 : 20;
+  const handleOffset = isTouchDevice ? -10 : -8;
+  const resizeHandleStyles = useMemo(
+    () => ({
+      bottomRight: {
+        width: `${handleSize}px`,
+        height: `${handleSize}px`,
+        right: `${handleOffset}px`,
+        bottom: `${handleOffset}px`,
+        borderRadius: "999px",
+        background: "rgba(244, 114, 182, 0.92)",
+        boxShadow: "0 0 0 2px rgba(15,23,42,0.55)",
+      },
+      bottomLeft: {
+        width: `${handleSize}px`,
+        height: `${handleSize}px`,
+        left: `${handleOffset}px`,
+        bottom: `${handleOffset}px`,
+        borderRadius: "999px",
+        background: "rgba(244, 114, 182, 0.92)",
+        boxShadow: "0 0 0 2px rgba(15,23,42,0.55)",
+      },
+      topRight: {
+        width: `${handleSize}px`,
+        height: `${handleSize}px`,
+        right: `${handleOffset}px`,
+        top: `${handleOffset}px`,
+        borderRadius: "999px",
+        background: "rgba(244, 114, 182, 0.92)",
+        boxShadow: "0 0 0 2px rgba(15,23,42,0.55)",
+      },
+      topLeft: {
+        width: `${handleSize}px`,
+        height: `${handleSize}px`,
+        left: `${handleOffset}px`,
+        top: `${handleOffset}px`,
+        borderRadius: "999px",
+        background: "rgba(244, 114, 182, 0.92)",
+        boxShadow: "0 0 0 2px rgba(15,23,42,0.55)",
+      },
+    }),
+    [handleOffset, handleSize]
+  );
+  const textLayersByIndex = useMemo(
+    () => new Map(textLayers.map((layer) => [layer.index, layer])),
+    [textLayers]
+  );
 
   const getBorder = (color: string, thickness = 2) => {
     const t = thickness;
@@ -166,6 +185,7 @@ export default function ImageSection({
     <div
       className="relative mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-lg shadow-fuchsia-500/10"
       id="downloadMeme"
+      style={{ touchAction: "manipulation" }}
       onMouseDown={(event) => {
         const target = event.target as HTMLElement;
         if (target === event.currentTarget || target.tagName === "IMG") {
@@ -188,7 +208,7 @@ export default function ImageSection({
       {boxes !== undefined &&
         boxes.map(
           ({ outline_color, color, fontFamily, fontSize, text, effect }, index) => {
-            const layer = textLayers.find((item) => item.index === index);
+            const layer = textLayersByIndex.get(index);
             const isLocked = layer?.locked ?? false;
             const isSelected = selectedLayer?.type === "text" && selectedLayer.index === index;
             const canEditLayer = !isExporting && !isLocked;
@@ -208,18 +228,21 @@ export default function ImageSection({
                     !isExporting && showSelectionOutline && isSelected
                       ? "2px solid rgba(244,114,182,0.6)"
                       : undefined,
-                  touchAction: "none",
+                  touchAction: canEditLayer ? "none" : "auto",
+                  willChange: "transform",
                 }}
                 key={index}
                 bounds="#downloadMeme"
                 disableDragging={!canEditLayer}
                 enableResizing={showTextHandles}
-                minWidth={96}
-                minHeight={52}
+                minWidth={isTouchDevice ? 132 : 96}
+                minHeight={isTouchDevice ? 64 : 52}
                 resizeHandleStyles={showTextHandles ? resizeHandleStyles : undefined}
                 dragGrid={grid}
                 resizeGrid={grid}
+                enableUserSelectHack={false}
                 onClick={() => onSelectText?.(index)}
+                onTouchStart={() => onSelectText?.(index)}
                 onDragStop={(_, data) => {
                   if (!layer) return;
                   onTextLayerChange?.(layer.id, { x: data.x, y: data.y, width, height });
@@ -234,7 +257,7 @@ export default function ImageSection({
                   });
                 }}
               >
-                <span>
+                <span className="w-full text-center leading-tight">
                   {effect === "arc" ? renderArcText(text) : text}
                 </span>
               </Rnd>
@@ -270,9 +293,10 @@ export default function ImageSection({
           lockAspectRatio
           enableResizing={showStickerHandles}
           disableDragging={!canEditSticker}
-          minWidth={48}
-          minHeight={48}
+          minWidth={isTouchDevice ? 60 : 48}
+          minHeight={isTouchDevice ? 60 : 48}
           resizeHandleStyles={showStickerHandles ? resizeHandleStyles : undefined}
+          enableUserSelectHack={false}
           style={{
             zIndex: sticker.zIndex,
             outline:
@@ -282,11 +306,13 @@ export default function ImageSection({
               selectedLayer.id === sticker.id
                 ? "2px solid rgba(244,114,182,0.6)"
                 : undefined,
-            touchAction: "none",
+            touchAction: canEditSticker ? "none" : "auto",
+            willChange: "transform",
           }}
           dragGrid={grid}
           resizeGrid={grid}
           onClick={() => onSelectSticker?.(sticker.id)}
+          onTouchStart={() => onSelectSticker?.(sticker.id)}
         >
           <div className="flex h-full w-full items-center justify-center">
             {sticker.kind === "image" && sticker.src ? (
