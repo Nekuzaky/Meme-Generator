@@ -6,7 +6,7 @@ type TranslationParams = Record<string, string | number>;
 
 const translations: Record<Language, Record<string, string>> = {
   fr: {
-    "brand.name": "Meme Creator",
+    "brand.name": "Altcore Meme Studio",
     "brand.tagline": "Crée, personnalise et télécharge en un clic",
     "navbar.trending": "100+ memes tendance",
     "navbar.drag": "Texte glisser-déposer",
@@ -31,7 +31,7 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.editor.description":
       "Prépare tes visuels avec des réglages et des formats prêts pour les réseaux.",
     "landing.editor.cta": "Ouvrir l’éditeur",
-    "footer.copyright": "© 2026 Meme Creator",
+    "footer.copyright": "© 2026 Altcore Meme Studio",
     "footer.credit": "Conçu par Neku",
     "footer.follow": "Suivez-nous",
     "social.instagram": "Instagram",
@@ -39,7 +39,7 @@ const translations: Record<Language, Record<string, string>> = {
     "social.x": "X",
     "social.youtube": "YouTube",
     "imageEditor.kicker": "Éditeur d'images",
-    "imageEditor.title": "Prépare ton visuel dans Meme Creator",
+    "imageEditor.title": "Prépare ton visuel dans Altcore Meme Studio",
     "imageEditor.description":
       "Ajuste les réglages, pivote ou retourne l'image puis exporte en PNG.",
     "imageEditor.reset": "Réinitialiser",
@@ -205,12 +205,12 @@ const translations: Record<Language, Record<string, string>> = {
     "onboarding.done": "Terminer",
   },
   en: {
-    "brand.name": "Meme Creator",
+    "brand.name": "Altcore Meme Studio",
     "brand.tagline": "Create, customize, and download in one click",
     "navbar.trending": "100+ trending memes",
     "navbar.drag": "Drag & drop text",
     "navbar.home": "Home",
-    "navbar.creator": "Meme creator",
+    "navbar.creator": "Altcore Meme Studio",
     "navbar.templates": "Template gallery",
     "navbar.editor": "Image Editor",
     "navbar.profile": "Profile",
@@ -222,7 +222,7 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.title": "Choose your creation space",
     "landing.subtitle":
       "Pick the module that fits your needs: meme creation or image editing.",
-    "landing.creator.title": "Meme creator",
+    "landing.creator.title": "Altcore Meme Studio",
     "landing.creator.description":
       "Generate a trending meme, add text, stickers, and download the result.",
     "landing.creator.cta": "Open creator",
@@ -230,7 +230,7 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.editor.description":
       "Prepare visuals with adjustments and social-ready formats.",
     "landing.editor.cta": "Open editor",
-    "footer.copyright": "© 2026 Meme Creator",
+    "footer.copyright": "© 2026 Altcore Meme Studio",
     "footer.credit": "Designed by Neku",
     "footer.follow": "Follow us",
     "social.instagram": "Instagram",
@@ -238,7 +238,7 @@ const translations: Record<Language, Record<string, string>> = {
     "social.x": "X",
     "social.youtube": "YouTube",
     "imageEditor.kicker": "Image editor",
-    "imageEditor.title": "Prepare your visual with Meme Creator",
+    "imageEditor.title": "Prepare your visual with Altcore Meme Studio",
     "imageEditor.description":
       "Fine-tune adjustments, rotate or flip the image, then export as PNG.",
     "imageEditor.reset": "Reset",

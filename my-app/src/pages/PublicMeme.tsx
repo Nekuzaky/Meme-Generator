@@ -192,7 +192,7 @@ export default function PublicMeme() {
 
   useEffect(() => {
     if (!meme) return;
-    const title = `${meme.title} | Meme Creator`;
+    const title = `${meme.title} | Altcore Meme Studio`;
     const description =
       meme.description?.slice(0, 140) ||
       `${meme.username ?? "Creator"} shared a public meme. Remix it in one click.`;

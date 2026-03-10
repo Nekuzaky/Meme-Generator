@@ -33,7 +33,7 @@ header('Cache-Control: public, max-age=120, s-maxage=120');
 
 $cfg = config();
 $baseUrl = rtrim((string) (($cfg['app']['public_base_url'] ?? 'https://meme.altcore.fr')), '/');
-$defaultTitle = 'Meme Creator';
+$defaultTitle = 'Altcore Meme Studio';
 $defaultDescription = 'Create, remix, and share memes in one click.';
 $defaultImage = $baseUrl . '/logo.png';
 
@@ -44,7 +44,7 @@ $memeUrl = $memeId > 0 ? $baseUrl . '/m/' . $memeId : $baseUrl . '/';
 $title = $defaultTitle;
 $description = $defaultDescription;
 $image = $defaultImage;
-$author = 'Meme Creator';
+$author = 'Altcore Meme Studio';
 $notFound = false;
 
 if ($memeId > 0) {
@@ -71,11 +71,11 @@ if ($memeId > 0) {
                 $imageCandidate = trim((string) ($row['source_image_url'] ?? ''));
             }
 
-            $title = truncate_text($rawTitle !== '' ? $rawTitle . ' | Meme Creator' : $defaultTitle, 120);
+            $title = truncate_text($rawTitle !== '' ? $rawTitle . ' | Altcore Meme Studio' : $defaultTitle, 120);
             if ($rawDescription !== '') {
                 $description = truncate_text($rawDescription, 220);
             } elseif ($rawAuthor !== '') {
-                $description = truncate_text($rawAuthor . ' shared a meme on Meme Creator.', 220);
+                $description = truncate_text($rawAuthor . ' shared a meme on Altcore Meme Studio.', 220);
             }
             if ($rawAuthor !== '') {
                 $author = $rawAuthor;
@@ -85,12 +85,12 @@ if ($memeId > 0) {
             }
         } else {
             $notFound = true;
-            $title = 'Meme not found | Meme Creator';
+            $title = 'Meme not found | Altcore Meme Studio';
             $description = 'This meme is unavailable or private.';
         }
     } catch (Throwable $e) {
         $notFound = true;
-        $title = 'Meme unavailable | Meme Creator';
+        $title = 'Meme unavailable | Altcore Meme Studio';
         $description = 'Unable to load meme metadata right now.';
     }
 } else {
@@ -116,7 +116,7 @@ if ($notFound) {
     <link rel="canonical" href="<?php echo html_escape($memeUrl); ?>" />
 
     <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="Meme Creator" />
+    <meta property="og:site_name" content="Altcore Meme Studio" />
     <meta property="og:url" content="<?php echo html_escape($memeUrl); ?>" />
     <meta property="og:title" content="<?php echo html_escape($title); ?>" />
     <meta property="og:description" content="<?php echo html_escape($description); ?>" />

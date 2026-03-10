@@ -30,13 +30,13 @@ export default function PwaInstallPrompt() {
       language === "fr"
         ? {
             title: "Installer l'app",
-            text: "Ajoute Meme Creator sur ton ecran d'accueil pour une experience plus fluide.",
+            text: "Ajoute Altcore Meme Studio sur ton ecran d'accueil pour une experience plus fluide.",
             install: "Installer",
             close: "Fermer",
           }
         : {
             title: "Install app",
-            text: "Add Meme Creator to your home screen for a smoother mobile experience.",
+            text: "Add Altcore Meme Studio to your home screen for a smoother mobile experience.",
             install: "Install",
             close: "Close",
           },

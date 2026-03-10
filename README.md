@@ -1,6 +1,6 @@
-# Meme Creator
+# Altcore Meme Studio
 
-Meme Creator is a full web app for creating, editing, saving, and sharing memes from trending templates or custom images.
+Altcore Meme Studio is a full web app for creating, editing, saving, and sharing memes from trending templates or custom images.
 
 It started as a school project and has since evolved into a more production-oriented product with accounts, public profiles, cloud drafts, moderation, email flows, and a dedicated PHP API.
 

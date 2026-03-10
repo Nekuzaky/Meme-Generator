@@ -313,9 +313,9 @@ function render_mail_shell(string $title, string $eyebrow, string $intro, string
         . '<div class="mc-wrap" style="max-width:640px;margin:0 auto;padding:32px 20px">'
         . '<div class="mc-card" style="border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:32px;background:linear-gradient(180deg,rgba(15,23,42,0.98),rgba(17,24,39,0.98));box-shadow:0 24px 60px rgba(0,0,0,0.35)">'
         . '<div class="mc-brand" style="display:flex;align-items:center;gap:14px;margin-bottom:18px">'
-        . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="Meme Creator" width="52" height="52" class="mc-logo" style="display:block;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#d946ef,#fb7185,#f59e0b);padding:8px;box-sizing:border-box">'
+        . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="Altcore Meme Studio" width="52" height="52" class="mc-logo" style="display:block;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#d946ef,#fb7185,#f59e0b);padding:8px;box-sizing:border-box">'
         . '<div>'
-        . '<div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fda4af;font-weight:700">Meme Creator</div>'
+        . '<div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fda4af;font-weight:700">Altcore Meme Studio</div>'
         . '<div style="font-size:18px;color:#ffffff;font-weight:800">Studio email</div>'
         . '</div></div>'
         . '<div class="mc-eyebrow" style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(217,70,239,0.12);border:1px solid rgba(217,70,239,0.25);color:#f5d0fe;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">'
@@ -324,13 +324,13 @@ function render_mail_shell(string $title, string $eyebrow, string $intro, string
         . '<p class="mc-intro" style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#cbd5e1">' . htmlspecialchars($intro, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
         . $bodyHtml
         . $actionHtml
-        . '<p class="mc-footer" style="margin:28px 0 0;font-size:12px;line-height:1.6;color:#94a3b8">Meme Creator · meme.altcore.fr</p>'
+        . '<p class="mc-footer" style="margin:28px 0 0;font-size:12px;line-height:1.6;color:#94a3b8">Altcore Meme Studio · meme.altcore.fr</p>'
         . '</div></div></body></html>';
 }
 
 function send_welcome_email(string $toEmail, string $toName, string $verifyUrl): void
 {
-    $text = "Bienvenue sur Meme Creator 🚀\n\nActive ton email pour publier tes memes sur le site : {$verifyUrl}";
+    $text = "Bienvenue sur Altcore Meme Studio 🚀\n\nActive ton email pour publier tes memes sur le site : {$verifyUrl}";
     $html = render_mail_shell(
         'Ton compte est cree 🚀',
         'Bienvenue',
@@ -342,7 +342,7 @@ function send_welcome_email(string $toEmail, string $toName, string $verifyUrl):
     send_app_email([
         'to_email' => $toEmail,
         'to_name' => $toName,
-        'subject' => '[Meme Creator] Bienvenue',
+        'subject' => '[Altcore Meme Studio] Bienvenue',
         'text' => $text,
         'html' => $html,
     ]);
@@ -350,7 +350,7 @@ function send_welcome_email(string $toEmail, string $toName, string $verifyUrl):
 
 function send_verification_email(string $toEmail, string $toName, string $verifyUrl): void
 {
-    $text = "Verifie ton adresse email ✅ pour publier tes memes sur Meme Creator : {$verifyUrl}";
+    $text = "Verifie ton adresse email ✅ pour publier tes memes sur Altcore Meme Studio : {$verifyUrl}";
     $html = render_mail_shell(
         'Verification email ✅',
         'Action requise',
@@ -362,7 +362,7 @@ function send_verification_email(string $toEmail, string $toName, string $verify
     send_app_email([
         'to_email' => $toEmail,
         'to_name' => $toName,
-        'subject' => '[Meme Creator] Verification email',
+        'subject' => '[Altcore Meme Studio] Verification email',
         'text' => $text,
         'html' => $html,
     ]);
@@ -370,11 +370,11 @@ function send_verification_email(string $toEmail, string $toName, string $verify
 
 function send_password_reset_email(string $toEmail, string $toName, string $resetUrl): void
 {
-    $text = "Reinitialise ton mot de passe Meme Creator 🔐 : {$resetUrl}\n\nCe lien expire rapidement.";
+    $text = "Reinitialise ton mot de passe Altcore Meme Studio 🔐 : {$resetUrl}\n\nCe lien expire rapidement.";
     $html = render_mail_shell(
         'Reset password 🔐',
         'Securite',
-        'Un reset de mot de passe a ete demande pour ton compte Meme Creator.',
+        'Un reset de mot de passe a ete demande pour ton compte Altcore Meme Studio.',
         '<p class="mc-copy" style="margin:0;font-size:15px;line-height:1.7;color:#cbd5e1">Si c etait bien toi, utilise le bouton ci-dessous. Sinon, tu peux ignorer cet email sans risque 🛡️</p>',
         ['label' => 'Choisir un nouveau mot de passe', 'url' => $resetUrl]
     );
@@ -382,7 +382,7 @@ function send_password_reset_email(string $toEmail, string $toName, string $rese
     send_app_email([
         'to_email' => $toEmail,
         'to_name' => $toName,
-        'subject' => '[Meme Creator] Reset password',
+        'subject' => '[Altcore Meme Studio] Reset password',
         'text' => $text,
         'html' => $html,
     ]);
