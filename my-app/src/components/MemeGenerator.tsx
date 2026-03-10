@@ -9,9 +9,11 @@ import {
   MdGifBox,
   MdLock,
   MdLockOpen,
+  MdMovie,
   MdOfflineBolt,
   MdRedo,
   MdShare,
+  MdTimer,
   MdTune,
   MdUndo,
   MdUpload,
@@ -153,6 +155,12 @@ export default function MemeGenerator({
   const [imageFilterKey, setImageFilterKey] = useState<FunFilterKey>("none");
   const [isMirrored, setIsMirrored] = useState(false);
   const [isExportingGif, setIsExportingGif] = useState(false);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [speedrunDuration, setSpeedrunDuration] = useState<30 | 60>(30);
+  const [speedrunRemaining, setSpeedrunRemaining] = useState(0);
+  const [speedrunConstraint, setSpeedrunConstraint] = useState("");
+  const [speedrunActive, setSpeedrunActive] = useState(false);
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
@@ -339,6 +347,9 @@ export default function MemeGenerator({
     setAutosaveState("idle");
     setImageFilterKey("none");
     setIsMirrored(false);
+    setSpeedrunActive(false);
+    setSpeedrunRemaining(0);
+    setSpeedrunConstraint("");
   }, [imageUrl, imageName, box_count]);
 
   useEffect(() => {
@@ -685,9 +696,70 @@ export default function MemeGenerator({
     return suffix ? `${base}-${suffix}.png` : `${base}.png`;
   };
 
+  const drawSmartWatermark = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    target: "image" | "video"
+  ) => {
+    const isVertical = height > width * 1.2;
+    const text = `Made with ${t("brand.name")}`;
+    const size = Math.max(12, Math.round(Math.min(width, height) * (target === "video" ? 0.022 : 0.02)));
+    const paddingX = Math.max(8, Math.round(size * 0.65));
+    const paddingY = Math.max(6, Math.round(size * 0.45));
+    ctx.font = `600 ${size}px Manrope, sans-serif`;
+    const textWidth = ctx.measureText(text).width;
+    const boxWidth = textWidth + paddingX * 2;
+    const boxHeight = size + paddingY * 2;
+    const x = isVertical ? width - boxWidth - 18 : 14;
+    const y = isVertical ? 14 : height - boxHeight - 14;
+    ctx.fillStyle = "rgba(2, 6, 23, 0.56)";
+    ctx.fillRect(x, y, boxWidth, boxHeight);
+    ctx.strokeStyle = "rgba(244,114,182,0.45)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, boxWidth - 1, boxHeight - 1);
+    ctx.fillStyle = "rgba(248,250,252,0.92)";
+    ctx.fillText(text, x + paddingX, y + boxHeight - paddingY - 2);
+  };
+
+  const blobToImage = (blob: Blob) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Unable to decode export image"));
+      };
+      image.src = objectUrl;
+    });
+
+  const applyWatermarkToBlob = async (
+    blob: Blob,
+    target: "image" | "video" = "image"
+  ) => {
+    if (!watermarkEnabled) return blob;
+    const image = await blobToImage(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.drawImage(image, 0, 0);
+    drawSmartWatermark(ctx, canvas.width, canvas.height, target);
+    const output = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((result) => resolve(result), "image/png");
+    });
+    return output ?? blob;
+  };
+
   const downloadMeme = async () => {
-    const blob = await buildMemeBlob();
+    let blob = await buildMemeBlob();
     if (!blob) return;
+    blob = await applyWatermarkToBlob(blob, "image");
     const { saveAs } = await loadFileSaver();
     saveAs(blob, getPngFileName());
     trackEngagement("download");
@@ -788,6 +860,48 @@ export default function MemeGenerator({
     trackEngagement("edit");
   };
 
+  const applyBundlePreset = (preset: "shitpost" | "corporate" | "gaming" | "anime") => {
+    const nextBoxes = deepClone(boxes.length > 0 ? boxes : [createDefaultBox(0), createDefaultBox(1)]);
+    const bundleLabel =
+      preset === "shitpost"
+        ? "SHITPOST"
+        : preset === "corporate"
+          ? "CORPORATE"
+          : preset === "gaming"
+            ? "GAMING"
+            : "ANIME";
+
+    const styleMap = {
+      shitpost: { fill: "#ffffff", outline: "#0f172a", effect: "shake" as Box["effect"], filter: "vhs" as FunFilterKey },
+      corporate: { fill: "#e2e8f0", outline: "#0f172a", effect: "none" as Box["effect"], filter: "mono" as FunFilterKey },
+      gaming: { fill: "#22d3ee", outline: "#111827", effect: "gradient" as Box["effect"], filter: "punch" as FunFilterKey },
+      anime: { fill: "#fef08a", outline: "#7c2d12", effect: "arc" as Box["effect"], filter: "sunset" as FunFilterKey },
+    }[preset];
+
+    const updated = nextBoxes.map((box, index) => ({
+      ...box,
+      text:
+        box.text.trim() ||
+        (index === 0
+          ? `${bundleLabel} MODE`
+          : language === "fr"
+            ? "on garde le chaos controle"
+            : "controlled chaos only"),
+      color: styleMap.fill,
+      outline_color: styleMap.outline,
+      effect: styleMap.effect,
+      fontFamily: preset === "corporate" ? "Arial" : randomItem(fontStyles),
+      fontSize: preset === "corporate" ? 40 : 46,
+    }));
+
+    replaceBoxes(updated);
+    setImageFilterKey(styleMap.filter);
+    setShareStatus(
+      language === "fr" ? `Preset ${preset} applique.` : `${preset} preset applied.`
+    );
+    trackEngagement("edit");
+  };
+
   const exportGif = async () => {
     const node = document.getElementById("downloadMeme");
     if (!node) return;
@@ -795,11 +909,18 @@ export default function MemeGenerator({
     const previousFilter = node.style.filter;
     const previousTransform = node.style.transform;
     const previousTransition = node.style.transition;
+    const textLayerNodes = Array.from(node.querySelectorAll<HTMLElement>(".meme-text-layer"));
+    const stickerLayerNodes = Array.from(node.querySelectorAll<HTMLElement>(".meme-sticker-layer"));
+    const previousTextOpacity = textLayerNodes.map((el) => el.style.opacity);
+    const previousTextTransform = textLayerNodes.map((el) => el.style.transform);
+    const previousStickerOpacity = stickerLayerNodes.map((el) => el.style.opacity);
+    const previousStickerTransform = stickerLayerNodes.map((el) => el.style.transform);
     const frameStyles = [
       { filter: "none", transform: "translate(0px, 0px)" },
       { filter: "contrast(1.08) saturate(1.1) hue-rotate(10deg)", transform: "translate(1px, -1px)" },
       { filter: "contrast(1.14) saturate(1.22)", transform: "translate(-1px, 1px)" },
       { filter: "brightness(1.06) saturate(1.18) hue-rotate(-8deg)", transform: "translate(0px, 0px)" },
+      { filter: "none", transform: "translate(0px, 0px)" },
     ];
 
     try {
@@ -816,12 +937,43 @@ export default function MemeGenerator({
       const domtoimage = await loadDomToImage();
       const frames: string[] = [];
       node.style.transition = "none";
-      for (const frame of frameStyles) {
+      for (let frameIndex = 0; frameIndex < frameStyles.length; frameIndex += 1) {
+        const frame = frameStyles[frameIndex];
         node.style.filter = frame.filter;
         node.style.transform = frame.transform;
+        textLayerNodes.forEach((el, index) => {
+          const visible = index <= frameIndex;
+          el.style.opacity = visible ? "1" : "0";
+          el.style.transform = visible ? "translateY(0px)" : "translateY(12px)";
+        });
+        stickerLayerNodes.forEach((el, index) => {
+          const visible = index <= frameIndex - 1;
+          el.style.opacity = visible ? "1" : "0";
+          el.style.transform = visible ? "scale(1)" : "scale(0.7)";
+        });
         await waitForUiCommit();
         const png = await domtoimage.default.toPng(node);
-        frames.push(png);
+        if (watermarkEnabled) {
+          const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error("GIF frame load failed"));
+            img.src = png;
+          });
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(image, 0, 0);
+            drawSmartWatermark(ctx, canvas.width, canvas.height, "image");
+            frames.push(canvas.toDataURL("image/png"));
+          } else {
+            frames.push(png);
+          }
+        } else {
+          frames.push(png);
+        }
       }
 
       const gifshot = await loadGifshot();
@@ -831,7 +983,7 @@ export default function MemeGenerator({
             images: frames,
             gifWidth: Math.max(320, node.clientWidth),
             gifHeight: Math.max(320, node.clientHeight),
-            interval: 0.16,
+            interval: 0.18,
             numFrames: frames.length,
             sampleInterval: 8,
           },
@@ -849,7 +1001,7 @@ export default function MemeGenerator({
       const gifBlob = await response.blob();
       const { saveAs } = await loadFileSaver();
       saveAs(gifBlob, `${getBaseFileName()}.gif`);
-      setShareStatus(language === "fr" ? "GIF exporte." : "GIF exported.");
+      setShareStatus(language === "fr" ? "GIF timeline exporte." : "Timeline GIF exported.");
       trackEngagement("download");
     } catch {
       setShareStatus(language === "fr" ? "Echec export GIF." : "GIF export failed.");
@@ -857,6 +1009,14 @@ export default function MemeGenerator({
       node.style.filter = previousFilter;
       node.style.transform = previousTransform;
       node.style.transition = previousTransition;
+      textLayerNodes.forEach((el, index) => {
+        el.style.opacity = previousTextOpacity[index] ?? "";
+        el.style.transform = previousTextTransform[index] ?? "";
+      });
+      stickerLayerNodes.forEach((el, index) => {
+        el.style.opacity = previousStickerOpacity[index] ?? "";
+        el.style.transform = previousStickerTransform[index] ?? "";
+      });
       detachedStylesheets.forEach((link) => {
         document.head.appendChild(link);
       });
@@ -865,13 +1025,114 @@ export default function MemeGenerator({
     }
   };
 
+  const exportVerticalVideo = async () => {
+    const sourceBlob = await buildMemeBlob();
+    if (!sourceBlob) return;
+    if (typeof MediaRecorder === "undefined") {
+      setShareStatus(language === "fr" ? "Export video non supporte par ce navigateur." : "Video export is not supported in this browser.");
+      return;
+    }
+
+    try {
+      setIsExportingVideo(true);
+      const image = await blobToImage(sourceBlob);
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const mimeCandidates = [
+        "video/mp4;codecs=h264",
+        "video/mp4",
+        "video/webm;codecs=vp9",
+        "video/webm",
+      ];
+      const mimeType = mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "";
+      if (!mimeType) {
+        setShareStatus(language === "fr" ? "Aucun codec video compatible." : "No compatible video codec found.");
+        return;
+      }
+
+      const stream = canvas.captureStream(30);
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 6_000_000,
+      });
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      const durationMs = 3200;
+      const renderFrame = (progress: number) => {
+        const zoom = 1.04 + progress * 0.06;
+        const fitScale = Math.min(canvas.width / image.width, canvas.height / image.height);
+        const drawWidth = image.width * fitScale * zoom;
+        const drawHeight = image.height * fitScale * zoom;
+        const swayX = Math.sin(progress * Math.PI * 2) * 10;
+        const swayY = Math.cos(progress * Math.PI * 2) * 8;
+        const drawX = (canvas.width - drawWidth) / 2 + swayX;
+        const drawY = (canvas.height - drawHeight) / 2 + swayY;
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+        if (watermarkEnabled) {
+          drawSmartWatermark(ctx, canvas.width, canvas.height, "video");
+        }
+      };
+
+      recorder.start();
+      const start = performance.now();
+      await new Promise<void>((resolve) => {
+        const tick = (now: number) => {
+          const elapsed = now - start;
+          const progress = Math.min(1, elapsed / durationMs);
+          renderFrame(progress);
+          if (elapsed < durationMs) {
+            requestAnimationFrame(tick);
+          } else {
+            resolve();
+          }
+        };
+        requestAnimationFrame(tick);
+      });
+
+      const videoBlob = await new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+        recorder.stop();
+      });
+      stream.getTracks().forEach((track) => track.stop());
+
+      const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+      const { saveAs } = await loadFileSaver();
+      saveAs(videoBlob, `${getBaseFileName()}-vertical.${extension}`);
+      setShareStatus(
+        extension === "mp4"
+          ? language === "fr"
+            ? "MP4 vertical exporte."
+            : "Vertical MP4 exported."
+          : language === "fr"
+            ? "Export vertical en WEBM (MP4 non supporte par ce navigateur)."
+            : "Exported vertical WEBM (MP4 not supported by this browser)."
+      );
+      trackEngagement("download");
+    } catch {
+      setShareStatus(language === "fr" ? "Echec export video vertical." : "Vertical video export failed.");
+    } finally {
+      setIsExportingVideo(false);
+    }
+  };
+
+
   const exportSocialTemplate = async (template: {
     id: string;
     width: number;
     height: number;
   }) => {
-    const sourceBlob = await buildMemeBlob();
+    let sourceBlob = await buildMemeBlob();
     if (!sourceBlob) return;
+    sourceBlob = await applyWatermarkToBlob(sourceBlob, "image");
 
     const sourceUrl = URL.createObjectURL(sourceBlob);
     try {
@@ -966,11 +1227,12 @@ export default function MemeGenerator({
     try {
       setIsSharing(true);
       setShareStatus(null);
-      const blob = await buildMemeBlob();
+      let blob = await buildMemeBlob();
       if (!blob) {
         setShareStatus(t("generator.shareUnavailable"));
         return;
       }
+      blob = await applyWatermarkToBlob(blob, "image");
 
       const fileName = getPngFileName();
       const file = new File([blob], fileName, { type: "image/png" });
@@ -1434,6 +1696,67 @@ export default function MemeGenerator({
     });
   };
 
+  const speedrunConstraints = useMemo(
+    () =>
+      language === "fr"
+        ? [
+            "Maximum 6 mots par texte",
+            "Ajoute exactement 1 sticker",
+            "Interdit d'utiliser le mot \"meme\"",
+            "Utilise un seul effet visuel",
+            "Ajoute une punchline en CAPS",
+            "Format mobile lisible obligatoire",
+          ]
+        : [
+            "Maximum 6 words per text",
+            "Add exactly 1 sticker",
+            "Do not use the word \"meme\"",
+            "Use only one visual effect",
+            "Add one ALL-CAPS punchline",
+            "Must stay mobile-readable",
+          ],
+    [language]
+  );
+
+  const startSpeedrun = (seconds: 30 | 60) => {
+    setSpeedrunDuration(seconds);
+    setSpeedrunRemaining(seconds);
+    setSpeedrunConstraint(randomItem(speedrunConstraints));
+    setSpeedrunActive(true);
+    setShareStatus(
+      language === "fr"
+        ? `Speedrun ${seconds}s lance.`
+        : `${seconds}s speedrun started.`
+    );
+  };
+
+  const stopSpeedrun = () => {
+    setSpeedrunActive(false);
+    setSpeedrunRemaining(0);
+    setShareStatus(language === "fr" ? "Speedrun arrete." : "Speedrun stopped.");
+  };
+
+  useEffect(() => {
+    if (!speedrunActive) return;
+    const timer = window.setInterval(() => {
+      setSpeedrunRemaining((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timer);
+          setSpeedrunActive(false);
+          setShareStatus(
+            language === "fr"
+              ? "Temps ecoule. Exporte ton meme."
+              : "Time up. Export your meme."
+          );
+          trackEngagement("session");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [speedrunActive, language]);
+
   const canUndo = historyRef.current.length > 1;
   const canRedo = futureRef.current.length > 0;
   const captionIndexes = Array.from({ length: boxesCount }, (_, index) => index);
@@ -1494,6 +1817,9 @@ export default function MemeGenerator({
     : language === "fr"
       ? "Generer des captions"
       : "Generate captions";
+  const speedrunClock = `${Math.floor(speedrunRemaining / 60)
+    .toString()
+    .padStart(2, "0")}:${(speedrunRemaining % 60).toString().padStart(2, "0")}`;
 
   return (
     <div className="glass-card w-full p-4 sm:p-5 md:p-8">
@@ -1626,6 +1952,22 @@ export default function MemeGenerator({
 
               <button
                 type="button"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 shadow-sm transition hover:border-emerald-300/70 hover:text-white disabled:opacity-50 sm:w-auto"
+                onClick={exportVerticalVideo}
+                disabled={isExportingVideo}
+              >
+                <MdMovie className="text-lg" />
+                {isExportingVideo
+                  ? language === "fr"
+                    ? "Export video..."
+                    : "Video export..."
+                  : language === "fr"
+                    ? "Exporter vertical MP4"
+                    : "Export vertical MP4"}
+              </button>
+
+              <button
+                type="button"
                 className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 onClick={shareMeme}
                 disabled={isSharing}
@@ -1732,6 +2074,85 @@ export default function MemeGenerator({
                 <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-100">
                   Dynamic
                 </span>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-100">
+                    <MdTimer className="text-sm text-amber-300" />
+                    {language === "fr" ? "Speedrun mode" : "Speedrun mode"}
+                  </p>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${speedrunActive ? "bg-amber-500/20 text-amber-200" : "bg-slate-800 text-slate-300"}`}>
+                    {speedrunClock}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  {speedrunConstraint ||
+                    (language === "fr"
+                      ? "Demarre un timer avec contrainte random."
+                      : "Start a timed challenge with random constraint.")}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startSpeedrun(30)}
+                    className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-amber-400/60"
+                  >
+                    30s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startSpeedrun(60)}
+                    className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-amber-400/60"
+                  >
+                    60s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopSpeedrun}
+                    disabled={!speedrunActive}
+                    className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-rose-400/60 disabled:opacity-40"
+                  >
+                    {language === "fr" ? "Stop" : "Stop"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-slate-100">
+                    {language === "fr" ? "Preset bundles" : "Preset bundles"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setWatermarkEnabled((prev) => !prev)}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
+                      watermarkEnabled
+                        ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-100"
+                        : "border-white/10 bg-slate-900/70 text-slate-200 hover:border-emerald-300/50"
+                    }`}
+                  >
+                    {watermarkEnabled
+                      ? language === "fr"
+                        ? "Watermark ON"
+                        : "Watermark ON"
+                      : language === "fr"
+                        ? "Watermark OFF"
+                        : "Watermark OFF"}
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(["shitpost", "corporate", "gaming", "anime"] as const).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => applyBundlePreset(preset)}
+                      className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400/60"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">

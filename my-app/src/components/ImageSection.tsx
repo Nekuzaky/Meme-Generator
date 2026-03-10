@@ -227,6 +227,7 @@ export default function ImageSection({
             const height = layer?.height ?? 110;
             return (
               <Rnd
+                className="meme-text-layer"
                 size={{ width, height }}
                 position={{ x, y }}
                 style={{
@@ -284,6 +285,7 @@ export default function ImageSection({
 
           return (
         <Rnd
+          className="meme-sticker-layer"
           key={sticker.id}
           bounds="#downloadMeme"
           size={{ width: sticker.size, height: sticker.size }}
