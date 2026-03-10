@@ -45,7 +45,7 @@ export default function Home() {
         };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-6">
       <section className="glass-card p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
@@ -57,24 +57,24 @@ export default function Home() {
             <p className="max-w-2xl text-sm text-slate-300">{copy.subtitle}</p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Link
               to="/templates"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto"
             >
               <MdAutoAwesome className="text-base" />
               {copy.trending}
             </Link>
             <a
               href="#upload-lab"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-fuchsia-400/60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-fuchsia-400/60 sm:w-auto"
             >
               <MdImage className="text-base" />
               {copy.upload}
             </a>
             <Link
               to="/editor"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/60 sm:w-auto"
             >
               <MdOutlineRocketLaunch className="text-base" />
               {copy.editor}
@@ -97,7 +97,7 @@ export default function Home() {
       </section>
       {selectedTemplate ? (
         <section className="glass-card p-5 md:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-300">
                 {language === "fr" ? "Template choisi" : "Selected template"}
@@ -108,7 +108,7 @@ export default function Home() {
             </div>
             <Link
               to="/templates"
-              className="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-fuchsia-400/60"
+              className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-center text-sm font-semibold text-slate-100 transition hover:border-fuchsia-400/60 sm:w-auto"
             >
               {language === "fr" ? "Changer de template" : "Change template"}
             </Link>

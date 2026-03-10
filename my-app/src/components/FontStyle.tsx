@@ -55,14 +55,14 @@ export default function FontStyle() {
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute z-50 right-0 mt-2 rounded-xl border border-white/10 bg-slate-900/90 px-5 py-5 text-slate-100 shadow-xl shadow-fuchsia-500/10"
+          className="absolute right-0 z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-white/10 bg-slate-900/90 px-4 py-4 text-slate-100 shadow-xl shadow-fuchsia-500/10"
         >
           <div className="flex flex-col items-start">
             <span className="text-sm text-slate-300">{t("font.family")}</span>
             <select
               value={fontFamily}
               onChange={handleFontFamilyChange}
-              className="mt-1 cursor-pointer rounded border border-white/10 bg-slate-950 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-fuchsia-400/80"
+              className="mt-1 w-full cursor-pointer rounded border border-white/10 bg-slate-950 px-2 py-1 text-sm text-slate-100 focus:border-fuchsia-400/80 focus:outline-none"
             >
               {fontOptions}
             </select>

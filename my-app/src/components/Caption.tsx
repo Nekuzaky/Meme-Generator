@@ -74,7 +74,7 @@ export default function Caption({ index, onRemove, canRemove = false }: IProps) 
   };
 
   return (
-    <div className="container mb-10 flex flex-col items-start justify-start">
+    <div className="mb-8 flex w-full flex-col items-start justify-start md:mb-10">
       <div className="mb-3 flex w-full items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {t("layers.text", { index: index + 1 })}
@@ -112,7 +112,7 @@ export default function Caption({ index, onRemove, canRemove = false }: IProps) 
         ))}
       </div>
 
-      <div className="mt-3 flex w-full items-center gap-2">
+      <div className="mt-3 flex w-full flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {t("caption.effect")}
         </span>

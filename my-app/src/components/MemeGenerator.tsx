@@ -1305,8 +1305,8 @@ export default function MemeGenerator({
       : "Generate captions";
 
   return (
-    <div className="glass-card w-full p-6 md:p-8">
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+    <div className="glass-card w-full p-4 sm:p-5 md:p-8">
+      <div className="flex flex-col gap-5 md:gap-6 xl:flex-row xl:items-start">
         <div className="w-full xl:w-[52%]">
           <ImageSection
             image={activeImageUrl}

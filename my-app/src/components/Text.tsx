@@ -14,8 +14,8 @@ export default function Text({ index }: IProps) {
   };
 
   return (
-    <div className="w-full mr-3 text-left">
-      <div className="flex flex-col items-start justify-start w-full gap-5">
+    <div className="mr-0 w-full text-left md:mr-3">
+      <div className="flex w-full flex-col items-start justify-start gap-4">
         <input
           type="text"
           value={state.text}

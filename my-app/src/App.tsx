@@ -67,7 +67,7 @@ export default function App() {
                 id="main-content"
                 className="flex-1"
               >
-                <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 pb-16 pt-10 md:px-6">
+                <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-3 pb-14 pt-6 sm:px-4 md:gap-12 md:px-6 md:pb-16 md:pt-10">
                   <Suspense
                     fallback={
                       <div className="glass-card w-full p-6 text-sm text-slate-300">

@@ -1,5 +1,5 @@
-const CACHE_NAME = "meme-creator-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/logo.png"];
+const CACHE_NAME = "meme-creator-v2";
+const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/logo.png?v=20260310"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
