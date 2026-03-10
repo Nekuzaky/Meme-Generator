@@ -9,6 +9,7 @@
 /coverage
 my-app/node_modules
 my-app/build
+my-app/dist
 
 # production
 /build
@@ -31,4 +32,9 @@ api/.env.*
 my-app/.env
 my-app/.env.*
 !my-app/.env.example
+
+# private strategy / local audits
+MONETIZATION.md
+.mobile-audit-*.png
+.lighthouse-*.json
 

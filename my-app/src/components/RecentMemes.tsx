@@ -46,6 +46,8 @@ export default function RecentMemes({ title, items, onSelect, onClear }: Props) 
                 <img
                   src={item.url}
                   alt={item.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               </div>

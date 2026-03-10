@@ -103,7 +103,7 @@ function assert_rate_limit(
 
     $blockedUntil = $row['blocked_until'] ? new DateTimeImmutable($row['blocked_until']) : null;
     if ($blockedUntil && $blockedUntil > $now) {
-        fail('Too many requests, please retry later.', 429);
+        fail_public(429);
     }
 
     $windowStart = new DateTimeImmutable((string) $row['window_start']);
@@ -131,7 +131,7 @@ function assert_rate_limit(
         $block->bindValue(':block_seconds', $blockSeconds, PDO::PARAM_INT);
         $block->bindValue(':rate_key', $rateKey, PDO::PARAM_STR);
         $block->execute();
-        fail('Too many requests, please retry later.', 429);
+        fail_public(429);
     }
 
     $update = $pdo->prepare(

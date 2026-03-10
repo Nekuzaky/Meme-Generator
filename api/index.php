@@ -25,47 +25,13 @@ $pdo = null;
 try {
     $pdo = db();
 } catch (Throwable $e) {
-    fail('Database unavailable. Check api/config.local.php and schema import.', 500);
+    fail_public(500);
 }
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $segments = route_segments();
 
 if (empty($segments)) {
-    ok([
-        'service' => 'Meme Generator API',
-        'version' => '1.3.0',
-        'routes' => [
-            'POST /api/auth/register',
-            'POST /api/auth/login',
-            'POST /api/auth/logout',
-            'POST /api/mail/contact',
-            'POST /api/mail/test',
-            'GET  /api/me',
-            'GET  /api/me/favorites',
-            'GET  /api/memes/public',
-            'GET  /api/memes',
-            'POST /api/memes',
-            'POST /api/memes/autosave',
-            'GET  /api/memes/{id}',
-            'PUT  /api/memes/{id}',
-            'DELETE /api/memes/{id}',
-            'POST /api/memes/{id}/favorite',
-            'DELETE /api/memes/{id}/favorite',
-            'POST /api/memes/{id}/report',
-            'GET  /api/memes/{id}/versions',
-            'POST /api/memes/{id}/versions',
-            'POST /api/memes/{id}/restore/{version_id}',
-            'GET  /api/moderation/memes',
-            'GET  /api/moderation/reports',
-            'GET  /api/moderation/blacklist',
-            'POST /api/moderation/blacklist',
-            'DELETE /api/moderation/blacklist/{id}',
-            'PATCH /api/moderation/memes/{id}',
-            'PATCH /api/moderation/reports/{id}',
-            'POST /api/ai/meme-suggestions',
-            'POST /api/telemetry/visit',
-        ],
-    ]);
+    fail_public(404);
 }
 
 function body_bool(array $body, string $key, bool $default = false): bool
@@ -176,6 +142,74 @@ function meme_to_api(array $row): array
         'created_at' => $row['created_at'],
         'updated_at' => $row['updated_at'],
     ];
+}
+
+function user_to_api(array $row): array
+{
+    return [
+        'id' => (int) $row['id'],
+        'username' => (string) $row['username'],
+        'email' => (string) $row['email'],
+        'created_at' => $row['created_at'] ?? null,
+        'is_admin' => is_admin_user($row),
+        'email_verified' => !empty($row['email_verified_at']),
+        'email_verified_at' => $row['email_verified_at'] ?? null,
+        'avatar_url' => $row['avatar_url'] ?? null,
+    ];
+}
+
+function app_frontend_url(string $path, array $params = []): string
+{
+    $base = rtrim((string) (config()['app']['public_base_url'] ?? 'https://meme.altcore.fr'), '/');
+    $url = $base . '/' . ltrim($path, '/');
+    if (!empty($params)) {
+        $url .= '?' . http_build_query($params);
+    }
+    return $url;
+}
+
+function assert_can_publish_public(array $user, int $isPublic): void
+{
+    if ($isPublic === 1 && empty($user['email_verified_at'])) {
+        fail('Email verification is required before publishing memes publicly.', 403, [
+            'needs_email_verification' => true,
+        ]);
+    }
+}
+
+function compute_moderation_state(PDO $pdo, array $user, string $title, string $description, array $tags, int $isPublic): array
+{
+    $blockedTerm = detect_blacklisted_term($pdo, [$title, $description, $tags]);
+    if ($blockedTerm !== null) {
+        return [
+            'status' => 'rejected',
+            'reason' => 'Blocked term detected: ' . $blockedTerm,
+        ];
+    }
+
+    if ($isPublic === 1 && !empty($user['email_verified_at'])) {
+        return [
+            'status' => 'approved',
+            'reason' => null,
+        ];
+    }
+
+    return [
+        'status' => 'pending',
+        'reason' => null,
+    ];
+}
+
+function send_verification_flow_email(PDO $pdo, array $user, bool $welcome = false): void
+{
+    $ttlMinutes = 60 * 24;
+    $plainToken = issue_email_token($pdo, (int) $user['id'], 'email_verify', $ttlMinutes);
+    $verifyUrl = app_frontend_url('/profile', ['verify' => $plainToken]);
+    if ($welcome) {
+        send_welcome_email((string) $user['email'], (string) $user['username'], $verifyUrl);
+        return;
+    }
+    send_verification_email((string) $user['email'], (string) $user['username'], $verifyUrl);
 }
 
 function fetch_meme_row(PDO $pdo, int $memeId): ?array
@@ -422,7 +456,7 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
             'auth_register',
             (int) (config()['auth']['max_register_attempts_per_hour'] ?? 20),
             3600,
-            1800
+            3600
         );
 
         $username = trim((string) ($body['username'] ?? ''));
@@ -441,7 +475,8 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
 
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :password_hash)'
+                'INSERT INTO users (username, email, password_hash, email_verified_at, avatar_url)
+                 VALUES (:username, :email, :password_hash, NULL, NULL)'
             );
             $stmt->execute([
                 ':username' => $username,
@@ -457,13 +492,23 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
 
         $userId = (int) $pdo->lastInsertId();
         $token = issue_token($pdo, $userId);
+        $user = [
+            'id' => $userId,
+            'username' => $username,
+            'email' => utf8_strtolower($email),
+            'email_verified_at' => null,
+            'avatar_url' => null,
+            'created_at' => gmdate('Y-m-d H:i:s'),
+        ];
+        try {
+            send_verification_flow_email($pdo, $user, true);
+        } catch (Throwable $e) {
+            // Registration should remain successful even if SMTP is temporarily down.
+        }
         ok([
             'token' => $token,
-            'user' => [
-                'id' => $userId,
-                'username' => $username,
-                'email' => utf8_strtolower($email),
-            ],
+            'user' => user_to_api($user),
+            'verification_email_sent' => true,
         ], 201);
     }
 
@@ -473,7 +518,7 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
             'auth_login',
             (int) (config()['auth']['max_login_attempts_per_minute'] ?? 8),
             60,
-            900
+            1800
         );
 
         $email = trim((string) ($body['email'] ?? ''));
@@ -484,7 +529,10 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
         }
 
         $stmt = $pdo->prepare(
-            'SELECT id, username, email, password_hash FROM users WHERE email = :email LIMIT 1'
+            'SELECT id, username, email, password_hash, email_verified_at, avatar_url, created_at
+             FROM users
+             WHERE email = :email
+             LIMIT 1'
         );
         $stmt->execute([':email' => utf8_strtolower($email)]);
         $user = $stmt->fetch();
@@ -496,11 +544,7 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
         $token = issue_token($pdo, (int) $user['id']);
         ok([
             'token' => $token,
-            'user' => [
-                'id' => (int) $user['id'],
-                'username' => $user['username'],
-                'email' => $user['email'],
-            ],
+            'user' => user_to_api($user),
         ]);
     }
 
@@ -511,6 +555,116 @@ if ($segments[0] === 'auth' && count($segments) >= 2) {
         }
         ok(['logged_out' => true]);
     }
+
+    if ($method === 'POST' && $action === 'forgot-password') {
+        assert_rate_limit($pdo, 'auth_forgot_password', 5, 3600, 3600);
+        $email = utf8_strtolower(body_string($body, 'email', 190, ''));
+        if ($email === '' || !mail_validate_email($email)) {
+            fail('Invalid email', 400);
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT id, username, email
+             FROM users
+             WHERE email = :email
+             LIMIT 1'
+        );
+        $stmt->execute([':email' => $email]);
+        $user = $stmt->fetch();
+
+        if ($user) {
+            $plainToken = issue_email_token($pdo, (int) $user['id'], 'password_reset', 120);
+            $resetUrl = app_frontend_url('/profile', ['reset' => $plainToken]);
+            try {
+                send_password_reset_email((string) $user['email'], (string) $user['username'], $resetUrl);
+            } catch (Throwable $e) {
+                // Keep generic response to avoid leaking account state.
+            }
+        }
+
+        ok(['sent' => true]);
+    }
+
+    if ($method === 'POST' && $action === 'reset-password') {
+        assert_rate_limit($pdo, 'auth_reset_password', 8, 3600, 3600);
+        $plainToken = trim((string) ($body['token'] ?? ''));
+        $password = (string) ($body['password'] ?? '');
+        if ($plainToken === '' || utf8_strlen($password) < 8) {
+            fail('Invalid reset payload', 400);
+        }
+
+        $tokenRow = consume_email_token($pdo, $plainToken, 'password_reset');
+        if (!$tokenRow) {
+            fail('This reset link is invalid or expired.', 400);
+        }
+
+        $stmt = $pdo->prepare(
+            'UPDATE users
+             SET password_hash = :password_hash,
+                 updated_at = NOW()
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':id' => (int) $tokenRow['user_id'],
+        ]);
+
+        ok(['reset' => true]);
+    }
+
+    if ($method === 'POST' && $action === 'send-verification') {
+        assert_rate_limit($pdo, 'auth_send_verification', 4, 3600, 3600);
+        $user = require_user($pdo);
+        if (!empty($user['email_verified_at'])) {
+            ok(['sent' => true, 'already_verified' => true]);
+        }
+
+        try {
+            send_verification_flow_email($pdo, $user, false);
+        } catch (Throwable $e) {
+            fail('Unable to send verification email right now', 500);
+        }
+
+        ok(['sent' => true]);
+    }
+
+    if ($method === 'POST' && $action === 'verify-email') {
+        assert_rate_limit($pdo, 'auth_verify_email', 10, 3600, 3600);
+        $plainToken = trim((string) ($body['token'] ?? ''));
+        if ($plainToken === '') {
+            fail('Verification token is required', 400);
+        }
+
+        $tokenRow = consume_email_token($pdo, $plainToken, 'email_verify');
+        if (!$tokenRow) {
+            fail('This verification link is invalid or expired.', 400);
+        }
+
+        $stmt = $pdo->prepare(
+            'UPDATE users
+             SET email_verified_at = COALESCE(email_verified_at, NOW()),
+                 updated_at = NOW()
+             WHERE id = :id'
+        );
+        $stmt->execute([':id' => (int) $tokenRow['user_id']]);
+
+        $userStmt = $pdo->prepare(
+            'SELECT id, username, email, created_at, email_verified_at, avatar_url
+             FROM users
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $userStmt->execute([':id' => (int) $tokenRow['user_id']]);
+        $user = $userStmt->fetch();
+        if (!$user) {
+            fail('User not found', 404);
+        }
+
+        ok([
+            'verified' => true,
+            'user' => user_to_api($user),
+        ]);
+    }
 }
 
 if ($segments[0] === 'mail' && count($segments) >= 2) {
@@ -518,7 +672,7 @@ if ($segments[0] === 'mail' && count($segments) >= 2) {
     $body = json_input();
 
     if ($method === 'POST' && $action === 'contact') {
-        assert_rate_limit($pdo, 'mail_contact', 20, 3600, 900);
+        assert_rate_limit($pdo, 'mail_contact', 8, 3600, 1800);
 
         $name = body_string($body, 'name', 80, '');
         $email = utf8_strtolower(body_string($body, 'email', 190, ''));
@@ -619,13 +773,7 @@ if ($segments[0] === 'me') {
         $stats = $statsStmt->fetch() ?: ['total_memes' => 0, 'public_memes' => 0];
 
         ok([
-            'user' => [
-                'id' => (int) $user['id'],
-                'username' => $user['username'],
-                'email' => $user['email'],
-                'created_at' => $user['created_at'],
-                'is_admin' => is_admin_user($user),
-            ],
+            'user' => user_to_api($user),
             'stats' => [
                 'total_memes' => (int) ($stats['total_memes'] ?? 0),
                 'public_memes' => (int) ($stats['public_memes'] ?? 0),
@@ -907,14 +1055,11 @@ if ($segments[0] === 'memes') {
         $isPublic = array_key_exists('is_public', $body)
             ? (body_bool($body, 'is_public', false) ? 1 : 0)
             : (int) ($current['is_public'] ?? 0);
+        assert_can_publish_public($user, $isPublic);
 
-        $blockedTerm = detect_blacklisted_term($pdo, [$title, $description, $tags]);
-        $moderationStatus = 'pending';
-        $moderationReason = null;
-        if ($blockedTerm !== null) {
-            $moderationStatus = 'rejected';
-            $moderationReason = 'Blocked term detected: ' . $blockedTerm;
-        }
+        $moderation = compute_moderation_state($pdo, $user, $title, $description, $tags, $isPublic);
+        $moderationStatus = $moderation['status'];
+        $moderationReason = $moderation['reason'];
 
         $payloadJson = $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE) : null;
         $tagsJson = json_encode(array_values($tags), JSON_UNESCAPED_UNICODE);
@@ -1006,14 +1151,11 @@ if ($segments[0] === 'memes') {
         $payload = $body['payload'] ?? null;
         $tags = normalize_tags($body['tags'] ?? []);
         $isPublic = body_bool($body, 'is_public', false) ? 1 : 0;
+        assert_can_publish_public($user, $isPublic);
 
-        $blockedTerm = detect_blacklisted_term($pdo, [$title, $description, $tags]);
-        $moderationStatus = 'pending';
-        $moderationReason = null;
-        if ($blockedTerm !== null) {
-            $moderationStatus = 'rejected';
-            $moderationReason = 'Blocked term detected: ' . $blockedTerm;
-        }
+        $moderation = compute_moderation_state($pdo, $user, $title, $description, $tags, $isPublic);
+        $moderationStatus = $moderation['status'];
+        $moderationReason = $moderation['reason'];
 
         $stmt = $pdo->prepare(
             'INSERT INTO memes
@@ -1264,8 +1406,10 @@ if ($segments[0] === 'memes') {
                 $params[':tags_json'] = json_encode(normalize_tags($body['tags']), JSON_UNESCAPED_UNICODE);
             }
             if (array_key_exists('is_public', $body)) {
+                $requestedPublic = body_bool($body, 'is_public', false) ? 1 : 0;
+                assert_can_publish_public($user, $requestedPublic);
                 $fields[] = 'is_public = :is_public';
-                $params[':is_public'] = body_bool($body, 'is_public', false) ? 1 : 0;
+                $params[':is_public'] = $requestedPublic;
                 $fields[] = 'moderated_by_user_id = NULL';
                 $fields[] = 'moderated_at = NULL';
             }
@@ -1283,20 +1427,19 @@ if ($segments[0] === 'memes') {
                 fail('Meme not found', 404);
             }
 
-            $blockedTerm = detect_blacklisted_term(
+            $statusPayloadTags = $updated['tags_json']
+                ? (json_decode((string) $updated['tags_json'], true) ?? [])
+                : [];
+            $moderation = compute_moderation_state(
                 $pdo,
-                [
-                    $updated['title'],
-                    $updated['description'],
-                    $updated['tags_json'] ? (json_decode((string) $updated['tags_json'], true) ?? []) : [],
-                ]
+                $user,
+                (string) $updated['title'],
+                (string) ($updated['description'] ?? ''),
+                is_array($statusPayloadTags) ? $statusPayloadTags : [],
+                ((int) ($updated['is_public'] ?? 0)) === 1 ? 1 : 0
             );
-            $status = 'pending';
-            $reason = null;
-            if ($blockedTerm !== null) {
-                $status = 'rejected';
-                $reason = 'Blocked term detected: ' . $blockedTerm;
-            }
+            $status = $moderation['status'];
+            $reason = $moderation['reason'];
 
             $statusStmt = $pdo->prepare(
                 'UPDATE memes
@@ -1362,4 +1505,4 @@ if ($segments[0] === 'memes') {
     }
 }
 
-fail('Route not found', 404);
+fail_public(404);

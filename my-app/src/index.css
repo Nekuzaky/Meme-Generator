@@ -30,7 +30,7 @@
 	h2,
 	h3,
 	.display-font {
-		font-family: "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
+		font-family: "cc-smash", "cc-smash-slice", "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
 		letter-spacing: -0.01em;
 	}
 
@@ -89,6 +89,7 @@
 
 	.rgb-text {
 		@apply font-semibold;
+		font-family: "cc-smash-inline", "cc-smash", "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
 		background: linear-gradient(90deg, #22d3ee, #38bdf8, #fb7185, #f59e0b, #22d3ee);
 		background-size: 300% 100%;
 		-webkit-background-clip: text;
@@ -104,6 +105,14 @@
 
 	.float-soft {
 		animation: float-soft 5s ease-in-out infinite;
+	}
+
+	.font-smash-slice {
+		font-family: "cc-smash-slice", "cc-smash", "Bricolage Grotesque", sans-serif;
+	}
+
+	.font-smash-open {
+		font-family: "cc-smash-open", "Manrope", sans-serif;
 	}
 }
 

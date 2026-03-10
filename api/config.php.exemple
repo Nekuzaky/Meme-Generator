@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 return [
     // Base config template.
-    // Put real secrets in config.local.php (ignored by Git).
+    // Safe to commit.
+    // Put real secrets in config.local.php only.
     'db' => [
         'host' => 'your_host_here',
         'port' => 3306,
@@ -15,54 +16,56 @@ return [
     ],
     'auth' => [
         'token_ttl_days' => 30,
-        'max_login_attempts_per_minute' => 8,
-        'max_register_attempts_per_hour' => 20,
+        'max_login_attempts_per_minute' => 5,
+        'max_register_attempts_per_hour' => 8,
     ],
     'cors' => [
         'allow_origins' => [
-            'https://meme.altcore.fr',
+            'https://your-domain.example',
             'http://localhost:5173',
         ],
         'allow_methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'allow_headers' => 'Content-Type, Authorization',
     ],
     'app' => [
-        // Public web URL used for OG server rendering and canonical links
-        'public_base_url' => 'https://meme.altcore.fr',
+        // Public web URL used for OG rendering, canonical links, and email links.
+        'public_base_url' => 'https://your-domain.example',
     ],
     'mail' => [
         'enabled' => true,
-        'from_email' => 'contact@altcore.fr',
-        'from_name' => 'Meme Generator (meme.altcore.fr)',
-        'support_to' => 'contact@altcore.fr',
-        'reply_to' => 'contact@altcore.fr',
+        'from_email' => 'no-reply@example.com',
+        'from_name' => 'Your App Name',
+        'support_to' => 'support@example.com',
+        'reply_to' => 'support@example.com',
         'smtp' => [
-            'host' => 'mail.infomaniak.com',
+            'host' => 'smtp.example.com',
             'port' => 587,
-            'username' => 'contact@altcore.fr',
+            'username' => 'smtp-user@example.com',
             'password' => 'replace-with-smtp-password',
             'encryption' => 'starttls', // starttls | ssl | none
             'timeout' => 15,
         ],
         'imap' => [
-            'host' => 'mail.infomaniak.com',
+            'host' => 'imap.example.com',
             'port' => 993,
-            'username' => 'contact@altcore.fr',
+            'username' => 'imap-user@example.com',
             'password' => 'replace-with-imap-password',
             'encryption' => 'ssl',
         ],
     ],
     'security' => [
         'ip_hash_secret' => 'replace-with-long-random-secret',
+        'healthcheck_token' => 'replace-with-healthcheck-token',
         'admin_emails' => [
             'admin@example.com',
         ],
     ],
     'ai' => [
-        // Optional: if empty, API falls back to local meme suggestion generator
+        // Optional: if empty, API falls back to the local meme suggestion generator.
         'openai_api_key' => '',
         'model' => 'gpt-4.1-mini',
     ],
 ];
 
-// Note this is a template file. Copy to config.php and keep sensitive overrides in config.local.php.
+// This is a template file.
+// Copy to config.php and keep sensitive overrides in config.local.php.

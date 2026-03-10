@@ -8,6 +8,7 @@ import {
 } from "../lib/api";
 import AdBanner from "../components/AdBanner";
 import { useLanguage } from "../context/LanguageContext";
+import { encodeSharePayload, isSharePayloadTooLarge, SHARE_QUERY_KEY } from "../lib/share";
 
 type SharePayload = {
   version: 1;
@@ -45,11 +46,6 @@ type SharePayload = {
     zIndex: number;
   }[];
 };
-
-const SHARE_QUERY_KEY = "memeShare";
-
-const encodeSharePayload = (payload: SharePayload) =>
-  encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
 
 const upsertMeta = (selector: string, attr: "content" | "href", value: string) => {
   let el = document.head.querySelector(selector) as HTMLMetaElement | HTMLLinkElement | null;
@@ -219,6 +215,9 @@ export default function PublicMeme() {
     if (!meme) return "";
     const payload = toSharePayload(meme);
     if (!payload) return "";
+    if (isSharePayloadTooLarge(payload)) {
+      return "";
+    }
     return `/creator?${SHARE_QUERY_KEY}=${encodeSharePayload(payload)}`;
   }, [meme]);
 

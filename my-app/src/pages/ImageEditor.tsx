@@ -6,9 +6,11 @@ import {
   MdRefresh,
   MdSaveAlt,
 } from "react-icons/md";
-import QRCode from "qrcode";
 import { useLanguage } from "../context/LanguageContext";
 import { trackEngagement } from "../lib/engagement";
+import { decodeSharePayload, encodeSharePayload } from "../lib/share";
+
+const loadQrCode = () => import("qrcode");
 
 type ImageEditorProject = {
   templateId: string;
@@ -377,9 +379,7 @@ export default function ImageEditor() {
   const shareUrl = useMemo(() => {
     if (!imageLink) return "";
     const payload = buildProject();
-    const encoded = encodeURIComponent(
-      btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-    );
+    const encoded = encodeSharePayload(payload);
     return `${window.location.origin}/editor?share=${encoded}`;
   }, [
     imageLink,
@@ -400,7 +400,8 @@ export default function ImageEditor() {
       setQrDataUrl("");
       return;
     }
-    QRCode.toDataURL(shareUrl, { margin: 1, width: 220 })
+    loadQrCode()
+      .then((QRCode) => QRCode.toDataURL(shareUrl, { margin: 1, width: 220 }))
       .then((url) => setQrDataUrl(url))
       .catch(() => setQrDataUrl(""));
   }, [shareUrl]);
@@ -410,7 +411,7 @@ export default function ImageEditor() {
     const share = params.get("share");
     if (!share) return;
     try {
-      const decoded = JSON.parse(decodeURIComponent(atob(share))) as ImageEditorProject;
+      const decoded = decodeSharePayload<ImageEditorProject>(share);
       applyProject(decoded);
     } catch {
       // ignore share errors

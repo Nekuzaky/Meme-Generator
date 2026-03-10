@@ -22,7 +22,6 @@ function mail_cfg(): array
             'encryption' => strtolower(trim((string) ($smtp['encryption'] ?? 'starttls'))),
             'timeout' => max(5, (int) ($smtp['timeout'] ?? 15)),
         ],
-        // Kept for future incoming mailbox integrations.
         'imap' => [
             'host' => trim((string) ($imap['host'] ?? '')),
             'port' => max(1, (int) ($imap['port'] ?? 993)),
@@ -70,7 +69,6 @@ function smtp_read_response($socket): string
             break;
         }
         $response .= $line;
-        // End of multi-line SMTP response: "250 " instead of "250-".
         if (preg_match('/^\d{3}\s/', $line) === 1) {
             break;
         }
@@ -191,7 +189,6 @@ function smtp_send_email(array $smtp, array $message): void
         $data = str_replace("\r\n", "\n", $message['data']);
         $data = str_replace("\r", "\n", $data);
         $data = str_replace("\n", "\r\n", $data);
-        // SMTP transparency.
         $data = preg_replace('/(^|\r\n)\./', '$1..', $data) ?? $data;
 
         smtp_write($socket, $data . "\r\n.");
@@ -276,5 +273,117 @@ function send_app_email(array $payload): void
         'from_email' => $fromEmail,
         'to_email' => $toEmail,
         'data' => $data,
+    ]);
+}
+
+function render_mail_shell(string $title, string $eyebrow, string $intro, string $bodyHtml, ?array $action = null): string
+{
+    $logoUrl = rtrim((string) (config()['app']['public_base_url'] ?? 'https://meme.altcore.fr'), '/') . '/logo.png';
+    $actionHtml = '';
+    if ($action && !empty($action['url']) && !empty($action['label'])) {
+        $actionHtml = '<p class="mc-stack" style="margin:28px 0 0">'
+            . '<a href="' . htmlspecialchars((string) $action['url'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"'
+            . ' class="mc-cta" style="display:inline-block;padding:14px 22px;border-radius:999px;background:linear-gradient(90deg,#d946ef,#fb7185);color:#ffffff;text-decoration:none;font-weight:700;text-align:center">'
+            . htmlspecialchars((string) $action['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '</a></p>';
+    }
+
+    return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>'
+        . 'body{margin:0;background:#020617;font-family:Arial,sans-serif;color:#e2e8f0;}'
+        . '.mc-wrap{max-width:640px;margin:0 auto;padding:32px 20px;}'
+        . '.mc-card{border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:32px;background:linear-gradient(180deg,rgba(15,23,42,0.98),rgba(17,24,39,0.98));box-shadow:0 24px 60px rgba(0,0,0,0.35);}'
+        . '.mc-brand{display:flex;align-items:center;gap:14px;margin-bottom:18px;}'
+        . '.mc-logo{display:block;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#d946ef,#fb7185,#f59e0b);padding:8px;box-sizing:border-box;}'
+        . '.mc-eyebrow{display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(217,70,239,0.12);border:1px solid rgba(217,70,239,0.25);color:#f5d0fe;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}'
+        . '.mc-title{margin:18px 0 12px;font-size:32px;line-height:1.05;color:#ffffff;}'
+        . '.mc-intro{margin:0 0 18px;font-size:16px;line-height:1.6;color:#cbd5e1;}'
+        . '.mc-copy{margin:0;font-size:15px;line-height:1.7;color:#cbd5e1;}'
+        . '.mc-footer{margin:28px 0 0;font-size:12px;line-height:1.6;color:#94a3b8;}'
+        . '@media only screen and (max-width:640px){'
+        . '.mc-wrap{padding:16px 10px !important;}'
+        . '.mc-card{padding:20px !important;border-radius:18px !important;}'
+        . '.mc-brand{display:block !important;margin-bottom:16px !important;}'
+        . '.mc-logo{margin:0 0 12px 0 !important;width:48px !important;height:48px !important;}'
+        . '.mc-title{font-size:24px !important;line-height:1.15 !important;}'
+        . '.mc-intro,.mc-copy{font-size:14px !important;line-height:1.6 !important;}'
+        . '.mc-stack{display:block !important;width:100% !important;}'
+        . '.mc-cta{display:block !important;width:100% !important;box-sizing:border-box !important;}'
+        . '}</style></head>'
+        . '<body style="margin:0;background:#020617;font-family:Arial,sans-serif;color:#e2e8f0">'
+        . '<div class="mc-wrap" style="max-width:640px;margin:0 auto;padding:32px 20px">'
+        . '<div class="mc-card" style="border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:32px;background:linear-gradient(180deg,rgba(15,23,42,0.98),rgba(17,24,39,0.98));box-shadow:0 24px 60px rgba(0,0,0,0.35)">'
+        . '<div class="mc-brand" style="display:flex;align-items:center;gap:14px;margin-bottom:18px">'
+        . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="Meme Creator" width="52" height="52" class="mc-logo" style="display:block;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#d946ef,#fb7185,#f59e0b);padding:8px;box-sizing:border-box">'
+        . '<div>'
+        . '<div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fda4af;font-weight:700">Meme Creator</div>'
+        . '<div style="font-size:18px;color:#ffffff;font-weight:800">Studio email</div>'
+        . '</div></div>'
+        . '<div class="mc-eyebrow" style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(217,70,239,0.12);border:1px solid rgba(217,70,239,0.25);color:#f5d0fe;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">'
+        . htmlspecialchars($eyebrow, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+        . '<h1 class="mc-title" style="margin:18px 0 12px;font-size:32px;line-height:1.05;color:#ffffff">' . htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</h1>'
+        . '<p class="mc-intro" style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#cbd5e1">' . htmlspecialchars($intro, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
+        . $bodyHtml
+        . $actionHtml
+        . '<p class="mc-footer" style="margin:28px 0 0;font-size:12px;line-height:1.6;color:#94a3b8">Meme Creator · meme.altcore.fr</p>'
+        . '</div></div></body></html>';
+}
+
+function send_welcome_email(string $toEmail, string $toName, string $verifyUrl): void
+{
+    $text = "Bienvenue sur Meme Creator 🚀\n\nActive ton email pour publier tes memes sur le site : {$verifyUrl}";
+    $html = render_mail_shell(
+        'Ton compte est cree 🚀',
+        'Bienvenue',
+        'Ton studio est pret. Verifie maintenant ton email pour pouvoir publier des memes en public sur le site.',
+        '<p class="mc-copy" style="margin:0;font-size:15px;line-height:1.7;color:#cbd5e1">Une fois l email confirme, tu pourras rendre tes memes publics, les partager dans la galerie et lancer tes premiers remixes ✨</p>',
+        ['label' => 'Verifier mon email', 'url' => $verifyUrl]
+    );
+
+    send_app_email([
+        'to_email' => $toEmail,
+        'to_name' => $toName,
+        'subject' => '[Meme Creator] Bienvenue',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
+function send_verification_email(string $toEmail, string $toName, string $verifyUrl): void
+{
+    $text = "Verifie ton adresse email ✅ pour publier tes memes sur Meme Creator : {$verifyUrl}";
+    $html = render_mail_shell(
+        'Verification email ✅',
+        'Action requise',
+        'Confirme ton adresse email pour debloquer le partage public de tes memes.',
+        '<p class="mc-copy" style="margin:0;font-size:15px;line-height:1.7;color:#cbd5e1">Sans verification, ton compte reste prive et tu ne peux pas afficher tes creations dans la galerie publique 🌍</p>',
+        ['label' => 'Confirmer mon email', 'url' => $verifyUrl]
+    );
+
+    send_app_email([
+        'to_email' => $toEmail,
+        'to_name' => $toName,
+        'subject' => '[Meme Creator] Verification email',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
+function send_password_reset_email(string $toEmail, string $toName, string $resetUrl): void
+{
+    $text = "Reinitialise ton mot de passe Meme Creator 🔐 : {$resetUrl}\n\nCe lien expire rapidement.";
+    $html = render_mail_shell(
+        'Reset password 🔐',
+        'Securite',
+        'Un reset de mot de passe a ete demande pour ton compte Meme Creator.',
+        '<p class="mc-copy" style="margin:0;font-size:15px;line-height:1.7;color:#cbd5e1">Si c etait bien toi, utilise le bouton ci-dessous. Sinon, tu peux ignorer cet email sans risque 🛡️</p>',
+        ['label' => 'Choisir un nouveau mot de passe', 'url' => $resetUrl]
+    );
+
+    send_app_email([
+        'to_email' => $toEmail,
+        'to_name' => $toName,
+        'subject' => '[Meme Creator] Reset password',
+        'text' => $text,
+        'html' => $html,
     ]);
 }

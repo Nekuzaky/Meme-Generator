@@ -19,6 +19,9 @@ function apply_cors(): void
 
     header('Access-Control-Allow-Methods: ' . $cors['allow_methods']);
     header('Access-Control-Allow-Headers: ' . $cors['allow_headers']);
+    header('Cross-Origin-Resource-Policy: same-site');
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header('X-Robots-Tag: noindex, nofollow, noarchive');
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -62,6 +65,22 @@ function json_response(array $payload, int $status = 200): never
 
 function fail(string $message, int $status = 400, array $extra = []): never
 {
+    json_response(array_merge(['ok' => false, 'error' => $message], $extra), $status);
+}
+
+function fail_public(int $status = 400, array $extra = []): never
+{
+    $map = [
+        400 => 'Bad request',
+        401 => 'Unauthorized',
+        403 => 'Forbidden',
+        404 => 'Not found',
+        405 => 'Method not allowed',
+        409 => 'Conflict',
+        429 => 'Too many requests',
+        500 => 'Server error',
+    ];
+    $message = $map[$status] ?? 'Request failed';
     json_response(array_merge(['ok' => false, 'error' => $message], $extra), $status);
 }
 

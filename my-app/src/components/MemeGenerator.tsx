@@ -1,19 +1,18 @@
 import {
   MdArrowDownward,
   MdArrowUpward,
+  MdAutoFixHigh,
   MdDownload,
   MdLock,
   MdLockOpen,
+  MdOfflineBolt,
   MdRedo,
   MdShare,
   MdUndo,
   MdUpload,
 } from "react-icons/md";
-import domtoimage from "dom-to-image";
-import { saveAs } from "file-saver";
-import QRCode from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { stickerOptions } from "../constants/constants";
+import { fontStyles, stickerOptions } from "../constants/constants";
 import CaptionProvider from "../context/CaptionContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useMeme } from "../context/MemeContext";
@@ -29,6 +28,12 @@ import {
   type ApiMemeVersion,
 } from "../lib/api";
 import { trackEngagement } from "../lib/engagement";
+import {
+  decodeSharePayload,
+  encodeSharePayload,
+  isSharePayloadTooLarge,
+  SHARE_QUERY_KEY,
+} from "../lib/share";
 import type { Box } from "../types/types";
 import Caption from "./Caption";
 import ImageSection from "./ImageSection";
@@ -72,18 +77,26 @@ type HistorySnapshot = {
 };
 
 type SharePayload = HistorySnapshot & { version: 1 };
-
-const SHARE_QUERY_KEY = "memeShare";
+type VariantSlotKey = "A" | "B";
+type VariantSlot = {
+  snapshot: HistorySnapshot;
+  updatedAt: number;
+};
 
 const deepClone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-const encodeSharePayload = (payload: SharePayload) =>
-  encodeURIComponent(
-    btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-  );
-
-const decodeSharePayload = (raw: string) =>
-  JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(raw))))) as SharePayload;
+const loadDomToImage = () => import("dom-to-image");
+const loadFileSaver = () => import("file-saver");
+const loadQrCode = () => import("qrcode");
+const randomItem = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
+const remixColors = [
+  ["#ffffff", "#111827"],
+  ["#fef08a", "#7c2d12"],
+  ["#22d3ee", "#0f172a"],
+  ["#f472b6", "#1f2937"],
+  ["#86efac", "#14532d"],
+];
+const remixEffects: Box["effect"][] = ["none", "arc", "outline", "gradient", "shake"];
+const LOCAL_CREATOR_FALLBACK_KEY = "meme-creator-cloud-fallback";
 
 export default function MemeGenerator({
   imageUrl,
@@ -121,6 +134,8 @@ export default function MemeGenerator({
   const [aiTopic, setAiTopic] = useState("");
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
+  const [variantSlots, setVariantSlots] = useState<Partial<Record<VariantSlotKey, VariantSlot>>>({});
+  const [isExportingVariants, setIsExportingVariants] = useState(false);
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
@@ -198,6 +213,26 @@ export default function MemeGenerator({
     stickers: deepClone(stickers),
   });
 
+  const saveLocalFallback = () => {
+    const entry = {
+      id: cloudMemeId ?? Date.now(),
+      title: getBaseFileName(),
+      source_image_url: activeImageUrl,
+      payload: sharePayload,
+      tags: ["creator", "web", "fallback"],
+      savedAt: new Date().toISOString(),
+    };
+
+    try {
+      const raw = localStorage.getItem(LOCAL_CREATOR_FALLBACK_KEY);
+      const items = raw ? (JSON.parse(raw) as typeof entry[]) : [];
+      const next = [entry, ...items].slice(0, 20);
+      localStorage.setItem(LOCAL_CREATOR_FALLBACK_KEY, JSON.stringify(next));
+    } catch {
+      // ignore local fallback storage errors
+    }
+  };
+
   const applySnapshot = (
     snapshot: HistorySnapshot,
     options?: { resetHistory?: boolean }
@@ -247,17 +282,11 @@ export default function MemeGenerator({
       const share = new URLSearchParams(window.location.search).get(SHARE_QUERY_KEY);
       if (share) {
         try {
-          const payload = decodeSharePayload(share);
-          if (payload.version === 1) {
+          const payload = decodeSharePayload<SharePayload>(share);
+          const snapshot = snapshotFromPayload(payload);
+          if (snapshot) {
             applySnapshot(
-              {
-                activeImageUrl: payload.activeImageUrl,
-                activeImageName: payload.activeImageName,
-                boxesCount: payload.boxesCount,
-                boxes: payload.boxes,
-                textLayers: payload.textLayers,
-                stickers: payload.stickers,
-              },
+              snapshot,
               { resetHistory: true }
             );
             setShowShareOptions(true);
@@ -593,13 +622,37 @@ export default function MemeGenerator({
     const node = document.getElementById("downloadMeme");
     if (!node) return null;
     setIsExporting(true);
+    const detachedStylesheets: HTMLLinkElement[] = [];
     try {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      return await domtoimage.toBlob(node);
+      document
+        .querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href^="http"]')
+        .forEach((link) => {
+          if (!link.parentNode) return;
+          detachedStylesheets.push(link);
+          link.parentNode.removeChild(link);
+        });
+      const domtoimage = await loadDomToImage();
+      return await domtoimage.default.toBlob(node);
     } finally {
+      detachedStylesheets.forEach((link) => {
+        document.head.appendChild(link);
+      });
       setIsExporting(false);
     }
+  };
+
+  const waitForUiCommit = async () => {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  };
+
+  const buildBlobFromSnapshot = async (snapshot: HistorySnapshot) => {
+    applySnapshot(snapshot);
+    await waitForUiCommit();
+    return buildMemeBlob();
   };
 
   const getBaseFileName = () => {
@@ -616,6 +669,7 @@ export default function MemeGenerator({
   const downloadMeme = async () => {
     const blob = await buildMemeBlob();
     if (!blob) return;
+    const { saveAs } = await loadFileSaver();
     saveAs(blob, getPngFileName());
     trackEngagement("download");
   };
@@ -660,6 +714,7 @@ export default function MemeGenerator({
       });
       if (!outputBlob) return;
 
+      const { saveAs } = await loadFileSaver();
       saveAs(outputBlob, getPngFileName(template.id));
       trackEngagement("download");
     } finally {
@@ -683,6 +738,9 @@ export default function MemeGenerator({
   const shareUrl = useMemo(() => {
     if (!activeImageUrl) return "";
     try {
+      if (isSharePayloadTooLarge(sharePayload)) {
+        return "";
+      }
       return `${window.location.origin}/creator?${SHARE_QUERY_KEY}=${encodeSharePayload(sharePayload)}`;
     } catch {
       return "";
@@ -694,7 +752,8 @@ export default function MemeGenerator({
       setQrDataUrl("");
       return;
     }
-    QRCode.toDataURL(shareUrl, { margin: 1, width: 220 })
+    loadQrCode()
+      .then((QRCode) => QRCode.toDataURL(shareUrl, { margin: 1, width: 220 }))
       .then((url) => setQrDataUrl(url))
       .catch(() => setQrDataUrl(""));
   }, [shareUrl]);
@@ -752,6 +811,7 @@ export default function MemeGenerator({
         return;
       }
 
+      const { saveAs } = await loadFileSaver();
       saveAs(blob, fileName);
       trackEngagement("download");
       setShareStatus(t("generator.shareFallbackDownload"));
@@ -796,8 +856,11 @@ export default function MemeGenerator({
       setAutosaveState("saved");
       setShareStatus(t("generator.savedProfile"));
     } catch (error) {
+      saveLocalFallback();
       setShareStatus(
-        error instanceof Error ? error.message : t("generator.shareUnavailable")
+        error instanceof Error
+          ? `${error.message} · ${language === "fr" ? "Copie locale gardee." : "Local backup saved."}`
+          : t("generator.shareUnavailable")
       );
     } finally {
       setIsSavingProfile(false);
@@ -919,6 +982,216 @@ export default function MemeGenerator({
     }
   };
 
+  const applyCaptionTone = (mode: "roast" | "deadpan" | "hype" | "plot") => {
+    const toneWords =
+      mode === "roast"
+        ? {
+            fr: ["quelle idee", "catastrophe premium", "niveau legendaire"],
+            en: ["what a choice", "premium disaster", "legend-tier mistake"],
+          }
+        : mode === "deadpan"
+          ? {
+              fr: ["oui bien sur", "aucun probleme", "situation normale"],
+              en: ["yes of course", "no problem", "totally normal"],
+            }
+          : mode === "hype"
+            ? {
+                fr: ["mode boss active", "energie maximale", "scene iconique"],
+                en: ["boss mode on", "maximum energy", "iconic scene"],
+              }
+            : {
+                fr: ["et puis retournement", "plot twist immediat", "fin inattendue"],
+                en: ["then plot twist", "instant twist", "unexpected ending"],
+              };
+
+    const locale = language === "fr" ? "fr" : "en";
+    const pool = toneWords[locale];
+    const nextBoxes = deepClone(boxes);
+
+    if (nextBoxes.length === 0) {
+      nextBoxes.push(createDefaultBox(0));
+      setTextLayers((prev) => [...prev, createDefaultTextLayer(0, getNextZIndex(prev, stickers))]);
+      setBoxesCount(1);
+    }
+
+    const withText = nextBoxes.map((box, index) => {
+      const baseText = box.text.trim() || (index === 0 ? getBaseFileName() : randomItem(pool));
+      const nextText =
+        mode === "roast"
+          ? `${baseText.toUpperCase()}`
+          : mode === "deadpan"
+            ? `${baseText}...`
+            : mode === "hype"
+              ? `${baseText.toUpperCase()}!!!`
+              : `${baseText} -> ${randomItem(pool)}`;
+
+      return {
+        ...box,
+        text: nextText,
+      };
+    });
+
+    replaceBoxes(withText);
+    trackEngagement("edit");
+  };
+
+  const autoLayoutForMobile = () => {
+    setTextLayers((prev) =>
+      prev.map((layer, index) => ({
+        ...layer,
+        x: 18,
+        y: index === 0 ? 18 : index === 1 ? 300 : 18 + index * 90,
+        width: 280,
+        height: 96,
+      }))
+    );
+    setGridEnabled(true);
+    setGridSize(8);
+    setShareStatus(language === "fr" ? "Mise en page mobile appliquee." : "Mobile-safe layout applied.");
+    trackEngagement("edit");
+  };
+
+  const chaosRemix = () => {
+    const nextBoxes = deepClone(boxes).map((box, index) => {
+      const [fill, outline] = randomItem(remixColors);
+      return {
+        ...box,
+        color: fill,
+        outline_color: outline,
+        fontFamily: randomItem(fontStyles),
+        fontSize: 42 + Math.floor(Math.random() * 22),
+        effect: randomItem(remixEffects),
+        text:
+          box.text.trim() ||
+          (index === 0
+            ? (language === "fr" ? "MOI EN 2 SECONDES" : "ME IN 2 SECONDS")
+            : language === "fr"
+              ? "tout part en vrille"
+              : "everything collapses"),
+      };
+    });
+
+    const nextTextLayers = textLayers.map((layer, index) => ({
+      ...layer,
+      x: 14 + (index % 2) * 26,
+      y: 18 + index * 86,
+      width: 240 + (index % 2) * 40,
+      height: 90 + (index % 2) * 16,
+    }));
+
+    replaceBoxes(nextBoxes);
+    setTextLayers(nextTextLayers);
+    setStickers((prev) => {
+      if (prev.length > 0) return prev;
+      return [
+        {
+          id: createStickerId(),
+          emoji: randomItem(stickerOptions),
+          kind: "emoji",
+          x: 24,
+          y: 24,
+          size: 58,
+          locked: false,
+          zIndex: getNextZIndex(nextTextLayers, prev),
+        },
+      ];
+    });
+    setShareStatus(language === "fr" ? "Chaos remix active." : "Chaos remix applied.");
+    trackEngagement("edit");
+  };
+
+  const saveVariant = (slot: VariantSlotKey) => {
+    setVariantSlots((prev) => ({
+      ...prev,
+      [slot]: {
+        snapshot: createSnapshot(),
+        updatedAt: Date.now(),
+      },
+    }));
+    setShareStatus(
+      language === "fr" ? `Version ${slot} capturee.` : `Variant ${slot} captured.`
+    );
+  };
+
+  const loadVariant = (slot: VariantSlotKey) => {
+    const variant = variantSlots[slot];
+    if (!variant) return;
+    applySnapshot(variant.snapshot, { resetHistory: true });
+    setShareStatus(
+      language === "fr" ? `Version ${slot} chargee.` : `Variant ${slot} loaded.`
+    );
+  };
+
+  const exportVariantComparison = async () => {
+    const variantA = variantSlots.A?.snapshot;
+    const variantB = variantSlots.B?.snapshot;
+    if (!variantA || !variantB) return;
+
+    const restoreSnapshot = createSnapshot();
+
+    try {
+      setIsExportingVariants(true);
+      const [blobA, blobB] = [await buildBlobFromSnapshot(variantA), await buildBlobFromSnapshot(variantB)];
+      if (!blobA || !blobB) {
+        setShareStatus(t("generator.shareUnavailable"));
+        return;
+      }
+
+      const [imageA, imageB] = await Promise.all(
+        [blobA, blobB].map(
+          (blob) =>
+            new Promise<HTMLImageElement>((resolve, reject) => {
+              const url = URL.createObjectURL(blob);
+              const img = new Image();
+              img.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(img);
+              };
+              img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Unable to load variant"));
+              };
+              img.src = url;
+            })
+        )
+      );
+
+      const gutter = 32;
+      const labelHeight = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = imageA.width + imageB.width + gutter * 3;
+      canvas.height = Math.max(imageA.height, imageB.height) + gutter * 2 + labelHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "600 28px Manrope";
+      ctx.fillText("Variant A", gutter, 42);
+      ctx.fillText("Variant B", imageA.width + gutter * 2, 42);
+      ctx.drawImage(imageA, gutter, labelHeight);
+      ctx.drawImage(imageB, imageA.width + gutter * 2, labelHeight);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((nextBlob) => resolve(nextBlob), "image/png");
+      });
+      if (!blob) return;
+      const { saveAs } = await loadFileSaver();
+      saveAs(blob, `${getBaseFileName()}-ab-compare.png`);
+      trackEngagement("download");
+      setShareStatus(language === "fr" ? "Comparatif A/B exporte." : "A/B comparison exported.");
+    } catch (error) {
+      setShareStatus(
+        error instanceof Error ? error.message : t("generator.shareUnavailable")
+      );
+    } finally {
+      applySnapshot(restoreSnapshot, { resetHistory: true });
+      await waitForUiCommit();
+      setIsExportingVariants(false);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem(API_TOKEN_KEY);
     if (!token || !activeImageUrl) return;
@@ -941,6 +1214,7 @@ export default function MemeGenerator({
         setCloudMemeId(response.id);
         setAutosaveState("saved");
       } catch {
+        saveLocalFallback();
         setAutosaveState("error");
       }
     }, 1800);
@@ -972,6 +1246,34 @@ export default function MemeGenerator({
   const canUndo = historyRef.current.length > 1;
   const canRedo = futureRef.current.length > 0;
   const captionIndexes = Array.from({ length: boxesCount }, (_, index) => index);
+  const viralScore = useMemo(() => {
+    const totalText = boxes.reduce((sum, box) => sum + box.text.trim().length, 0);
+    const conciseBonus = totalText > 0 && totalText <= 90 ? 24 : totalText <= 150 ? 16 : 8;
+    const layerBonus = Math.min(24, boxes.length * 8);
+    const stickerBonus = stickers.length === 0 ? 6 : stickers.length <= 3 ? 14 : 8;
+    const contrastBonus = boxes.some((box) => box.color !== box.outline_color) ? 18 : 6;
+    const polishBonus = shareUrl ? 20 : 10;
+    return Math.min(100, conciseBonus + layerBonus + stickerBonus + contrastBonus + polishBonus);
+  }, [boxes, stickers, shareUrl]);
+  const viralSuggestions = useMemo(() => {
+    const suggestions: string[] = [];
+    const totalText = boxes.reduce((sum, box) => sum + box.text.trim().length, 0);
+    if (totalText === 0) {
+      suggestions.push(language === "fr" ? "Ajoute une accroche courte et lisible." : "Add a short, readable hook.");
+    } else if (totalText > 150) {
+      suggestions.push(language === "fr" ? "Raccourcis le texte pour un impact mobile." : "Trim text for stronger mobile impact.");
+    }
+    if (stickers.length === 0) {
+      suggestions.push(language === "fr" ? "Un sticker bien place peut booster le rythme visuel." : "One well-placed sticker can boost visual rhythm.");
+    }
+    if (!shareUrl) {
+      suggestions.push(language === "fr" ? "Sauvegarde cloud pour partager proprement un projet lourd." : "Use cloud save to share a heavy project reliably.");
+    }
+    if (suggestions.length === 0) {
+      suggestions.push(language === "fr" ? "Bon ratio lisibilite / chaos. Pret a sortir." : "Strong readability/chaos balance. Ready to ship.");
+    }
+    return suggestions.slice(0, 3);
+  }, [boxes, stickers.length, shareUrl, language]);
   const autosaveText =
     autosaveState === "saving"
       ? language === "fr"
@@ -1004,8 +1306,8 @@ export default function MemeGenerator({
 
   return (
     <div className="glass-card w-full p-6 md:p-8">
-      <div className="flex flex-col gap-8 md:flex-row md:items-start">
-        <div className="w-full md:w-1/2">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+        <div className="w-full xl:w-[52%]">
           <ImageSection
             image={activeImageUrl}
             stickers={stickers}
@@ -1024,8 +1326,8 @@ export default function MemeGenerator({
           />
         </div>
 
-        <div className="w-full md:w-1/2">
-          <div className="space-y-6">
+        <div className="w-full xl:w-[48%]">
+          <div className="space-y-4 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto xl:pr-2">
             {onboardingStep !== null && (
               <div className="rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/10 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1063,7 +1365,7 @@ export default function MemeGenerator({
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {captionIndexes.map((index) => (
                 <CaptionProvider key={index} index={index}>
                   <Caption
@@ -1075,7 +1377,7 @@ export default function MemeGenerator({
               ))}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60 hover:text-white disabled:opacity-40 sm:w-auto"
@@ -1133,7 +1435,161 @@ export default function MemeGenerator({
               </button>
             </div>
 
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {language === "fr" ? "Creator intelligence" : "Creator intelligence"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {language === "fr"
+                      ? "Des outils rapides pour sortir une version plus agressive, plus lisible, ou plus mobile."
+                      : "Fast tools to produce a sharper, cleaner, or more mobile-ready version."}
+                  </p>
+                </div>
+                <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  Viral score {viralScore}/100
+                </div>
+              </div>
+
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-orange-400 transition-all"
+                  style={{ width: `${Math.max(10, viralScore)}%` }}
+                />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={chaosRemix}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-fuchsia-400/60"
+                >
+                  <MdOfflineBolt className="text-base" />
+                  {language === "fr" ? "Chaos remix" : "Chaos remix"}
+                </button>
+                <button
+                  type="button"
+                  onClick={autoLayoutForMobile}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-cyan-400/60"
+                >
+                  <MdAutoFixHigh className="text-base" />
+                  {language === "fr" ? "Auto layout mobile" : "Mobile auto layout"}
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[
+                  { id: "roast", label: language === "fr" ? "Roast" : "Roast" },
+                  { id: "deadpan", label: language === "fr" ? "Deadpan" : "Deadpan" },
+                  { id: "hype", label: language === "fr" ? "Hype" : "Hype" },
+                  { id: "plot", label: language === "fr" ? "Plot twist" : "Plot twist" },
+                ].map((tone) => (
+                  <button
+                    key={tone.id}
+                    type="button"
+                    onClick={() => applyCaptionTone(tone.id as "roast" | "deadpan" | "hype" | "plot")}
+                    className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-fuchsia-400/60"
+                  >
+                    {tone.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {viralSuggestions.map((item) => (
+                  <p
+                    key={item}
+                    className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"
+                  >
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {language === "fr" ? "A/B variants lab" : "A/B variants lab"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {language === "fr"
+                      ? "Capture deux versions, recharge-les et exporte une planche comparative."
+                      : "Capture two versions, reload them, and export a comparison board."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={exportVariantComparison}
+                  disabled={!variantSlots.A || !variantSlots.B || isExportingVariants}
+                  className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-fuchsia-400/60 disabled:opacity-40"
+                >
+                  {isExportingVariants
+                    ? language === "fr"
+                      ? "Export..."
+                      : "Exporting..."
+                    : language === "fr"
+                      ? "Exporter A/B"
+                      : "Export A/B"}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {(["A", "B"] as VariantSlotKey[]).map((slot) => {
+                  const variant = variantSlots[slot];
+                  return (
+                    <div
+                      key={slot}
+                      className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-100">
+                          Variant {slot}
+                        </p>
+                        <span className="text-[11px] text-slate-400">
+                          {variant
+                            ? new Date(variant.updatedAt).toLocaleTimeString()
+                            : language === "fr"
+                              ? "Vide"
+                              : "Empty"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-400">
+                        {variant
+                          ? `${variant.snapshot.boxes.filter((box) => box.text.trim() !== "").length} text / ${variant.snapshot.stickers.length} stickers`
+                          : language === "fr"
+                            ? "Capture l'etat actuel pour le comparer."
+                            : "Capture the current state to compare it."}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveVariant(slot)}
+                          className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-fuchsia-400/60"
+                        >
+                          {language === "fr" ? `Sauver ${slot}` : `Save ${slot}`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => loadVariant(slot)}
+                          disabled={!variant}
+                          className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-400/60 disabled:opacity-40"
+                        >
+                          {language === "fr" ? `Charger ${slot}` : `Load ${slot}`}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {shareStatus && <p className="text-xs text-slate-300">{shareStatus}</p>}
+              {!shareUrl ? (
+                <p className="text-xs text-amber-200">{t("generator.shareTooLarge")}</p>
+              ) : null}
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
               <div className="flex items-center justify-between">

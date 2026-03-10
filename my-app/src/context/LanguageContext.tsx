@@ -12,6 +12,7 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.drag": "Texte glisser-déposer",
     "navbar.home": "Accueil",
     "navbar.creator": "Créateur de memes",
+    "navbar.templates": "Galerie templates",
     "navbar.editor": "Éditeur d’images",
     "navbar.profile": "Profil",
     "navbar.language": "Langue",
@@ -109,6 +110,11 @@ const translations: Record<Language, Record<string, string>> = {
     "meme.searchPlaceholder": "Ex: drake, doge, success kid...",
     "meme.searchCount": "{count} sur {total} templates",
     "meme.noResults": "Aucun template ne correspond a ta recherche.",
+    "meme.galleryTitle": "Galerie templates",
+    "meme.pickTemplate": "Navigue plus vite dans la bibliotheque sans recharger toute la liste d'un coup.",
+    "meme.prevPage": "Prec",
+    "meme.nextPage": "Suiv",
+    "meme.page": "Page {current}/{total}",
     "meme.favorite": "Ajouter aux favoris",
     "meme.unfavorite": "Retirer des favoris",
     "meme.tagAll": "Tous les tags",
@@ -136,6 +142,7 @@ const translations: Record<Language, Record<string, string>> = {
     "generator.sharePanel": "Lien de partage",
     "generator.copyLink": "Copier le lien",
     "generator.linkCopied": "Lien de partage copie.",
+    "generator.shareTooLarge": "Le projet est trop lourd pour un lien. Sauvegarde-le dans ton profil pour un partage propre.",
     "generator.qrNote": "Scanne ce QR pour ouvrir le meme sur mobile.",
     "generator.downloadQr": "Telecharger le QR",
     "generator.saveProfile": "Sauvegarder profil",
@@ -183,16 +190,16 @@ const translations: Record<Language, Record<string, string>> = {
       "Essaie de rafraîchir la page ou de vérifier ta connexion internet",
     "ad.label": "Espace sponsorisé",
     "ad.placeholder": "Votre annonce ici — discrète et non intrusive.",
-    "onboarding.creator.title": "Guide rapide",
-    "onboarding.creator.step1.title": "Etape 1: Drag",
+    "onboarding.creator.title": "Flow rapide",
+    "onboarding.creator.step1.title": "Etape 1: Choisir un template",
     "onboarding.creator.step1.description":
-      "Glisse le texte directement sur l'image. Sur mobile, utilise les poignees pour redimensionner.",
-    "onboarding.creator.step2.title": "Etape 2: Calques",
+      "Passe par Templates pour partir d'un format viral, ou importe ton image si tu as deja ton visuel.",
+    "onboarding.creator.step2.title": "Etape 2: Ecrire le texte",
     "onboarding.creator.step2.description":
-      "Ouvre Calques pour changer l'ordre, verrouiller des elements et garder une composition propre.",
-    "onboarding.creator.step3.title": "Etape 3: Stickers",
+      "Ajoute ton caption, ajuste la taille, puis place-le directement sur l'image.",
+    "onboarding.creator.step3.title": "Etape 3: Exporter",
     "onboarding.creator.step3.description":
-      "Ajoute des stickers, exporte au format social, puis partage avec un lien ou un QR.",
+      "Exporte en PNG ou en format social des que le rendu est bon. Garde le flow court.",
     "onboarding.skip": "Passer",
     "onboarding.next": "Suivant",
     "onboarding.done": "Terminer",
@@ -204,6 +211,7 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.drag": "Drag & drop text",
     "navbar.home": "Home",
     "navbar.creator": "Meme creator",
+    "navbar.templates": "Template gallery",
     "navbar.editor": "Image Editor",
     "navbar.profile": "Profile",
     "navbar.language": "Language",
@@ -301,6 +309,11 @@ const translations: Record<Language, Record<string, string>> = {
     "meme.searchPlaceholder": "Example: drake, doge, success kid...",
     "meme.searchCount": "{count} of {total} templates",
     "meme.noResults": "No templates match your search.",
+    "meme.galleryTitle": "Template gallery",
+    "meme.pickTemplate": "Browse the library faster without dumping the whole list at once.",
+    "meme.prevPage": "Prev",
+    "meme.nextPage": "Next",
+    "meme.page": "Page {current}/{total}",
     "meme.favorite": "Add to favorites",
     "meme.unfavorite": "Remove favorite",
     "meme.tagAll": "All tags",
@@ -328,6 +341,7 @@ const translations: Record<Language, Record<string, string>> = {
     "generator.sharePanel": "Share link",
     "generator.copyLink": "Copy link",
     "generator.linkCopied": "Share link copied.",
+    "generator.shareTooLarge": "This project is too large for a clean link. Save it to your profile for reliable sharing.",
     "generator.qrNote": "Scan this QR code to open the meme on mobile.",
     "generator.downloadQr": "Download QR",
     "generator.saveProfile": "Save to profile",
@@ -375,16 +389,16 @@ const translations: Record<Language, Record<string, string>> = {
       "Try refreshing the page or checking your internet connection",
     "ad.label": "Sponsored",
     "ad.placeholder": "Your ad here — subtle and non-intrusive.",
-    "onboarding.creator.title": "Quick tour",
-    "onboarding.creator.step1.title": "Step 1: Drag",
+    "onboarding.creator.title": "Quick flow",
+    "onboarding.creator.step1.title": "Step 1: Pick a template",
     "onboarding.creator.step1.description":
-      "Drag text directly over the image. On mobile, use handles to resize.",
-    "onboarding.creator.step2.title": "Step 2: Layers",
+      "Start in Templates for a viral format, or upload your own image if you already have the visual.",
+    "onboarding.creator.step2.title": "Step 2: Write the text",
     "onboarding.creator.step2.description":
-      "Open Layers to reorder, lock items, and keep your composition clean.",
-    "onboarding.creator.step3.title": "Step 3: Stickers",
+      "Add your caption, adjust size, then place it directly on the image.",
+    "onboarding.creator.step3.title": "Step 3: Export",
     "onboarding.creator.step3.description":
-      "Add stickers, export social sizes, then share with a link or QR.",
+      "Export to PNG or a social format as soon as the render is right. Keep the flow short.",
     "onboarding.skip": "Skip",
     "onboarding.next": "Next",
     "onboarding.done": "Done",
@@ -392,6 +406,7 @@ const translations: Record<Language, Record<string, string>> = {
   de: {
     "navbar.home": "Start",
     "navbar.creator": "Meme-Creator",
+    "navbar.templates": "Template-Galerie",
     "navbar.editor": "Bildeditor",
     "navbar.profile": "Profil",
     "navbar.language": "Sprache",
@@ -412,6 +427,7 @@ const translations: Record<Language, Record<string, string>> = {
   it: {
     "navbar.home": "Home",
     "navbar.creator": "Creatore meme",
+    "navbar.templates": "Galleria template",
     "navbar.editor": "Editor immagini",
     "navbar.profile": "Profilo",
     "navbar.language": "Lingua",
@@ -432,6 +448,7 @@ const translations: Record<Language, Record<string, string>> = {
   ja: {
     "navbar.home": "ホーム",
     "navbar.creator": "ミーム作成",
+    "navbar.templates": "テンプレートギャラリー",
     "navbar.editor": "画像編集",
     "navbar.profile": "プロフィール",
     "navbar.language": "言語",
@@ -468,18 +485,39 @@ const interpolate = (text: string, params?: TranslationParams) => {
   );
 };
 
+const isSupportedLanguage = (value: string): value is Language =>
+  value === "fr" || value === "en" || value === "de" || value === "it" || value === "ja";
+
+const detectBrowserLanguage = (): Language => {
+  if (typeof navigator === "undefined") return "fr";
+  const candidates = [navigator.language, ...(navigator.languages ?? [])]
+    .filter(Boolean)
+    .map((item) => item.toLowerCase());
+
+  for (const candidate of candidates) {
+    const short = candidate.slice(0, 2);
+    if (isSupportedLanguage(short)) {
+      return short;
+    }
+  }
+  return "en";
+};
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>("fr");
 
   useEffect(() => {
     const saved = localStorage.getItem("meme-creator-language");
-    if (saved === "fr" || saved === "en" || saved === "de" || saved === "it" || saved === "ja") {
+    if (saved && isSupportedLanguage(saved)) {
       setLanguage(saved);
+      return;
     }
+    setLanguage(detectBrowserLanguage());
   }, []);
 
   useEffect(() => {
     localStorage.setItem("meme-creator-language", language);
+    document.documentElement.lang = language;
   }, [language]);
 
   const value = useMemo<LanguageContextValue>(

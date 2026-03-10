@@ -71,7 +71,7 @@ export default function OwnMeme() {
   }, [imageUrl, imageName, addRecentMeme]);
 
   return (
-    <section className="glass-card w-full p-6 md:p-8">
+    <section id="upload-lab" className="glass-card w-full p-6 md:p-8">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-fuchsia-400">

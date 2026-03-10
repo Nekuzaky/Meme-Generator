@@ -51,7 +51,7 @@ function current_user(PDO $pdo): ?array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT u.id, u.username, u.email, u.created_at
+        'SELECT u.id, u.username, u.email, u.created_at, u.email_verified_at, u.avatar_url
          FROM auth_tokens t
          INNER JOIN users u ON u.id = t.user_id
          WHERE t.token_hash = :token_hash
@@ -61,6 +61,76 @@ function current_user(PDO $pdo): ?array
     $stmt->execute([':token_hash' => hash_token($token)]);
     $user = $stmt->fetch();
     return $user ?: null;
+}
+
+function issue_email_token(PDO $pdo, int $userId, string $purpose, int $ttlMinutes): string
+{
+    if (!in_array($purpose, ['email_verify', 'password_reset'], true)) {
+        throw new InvalidArgumentException('Unsupported email token purpose');
+    }
+
+    $plain = bin2hex(random_bytes(32));
+    $hashed = hash_token($plain);
+
+    $cleanup = $pdo->prepare(
+        'DELETE FROM auth_email_tokens
+         WHERE user_id = :user_id
+           AND purpose = :purpose'
+    );
+    $cleanup->execute([
+        ':user_id' => $userId,
+        ':purpose' => $purpose,
+    ]);
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO auth_email_tokens (user_id, purpose, token_hash, expires_at)
+         VALUES (:user_id, :purpose, :token_hash, DATE_ADD(NOW(), INTERVAL :ttl MINUTE))'
+    );
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':purpose', $purpose, PDO::PARAM_STR);
+    $stmt->bindValue(':token_hash', $hashed, PDO::PARAM_STR);
+    $stmt->bindValue(':ttl', $ttlMinutes, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $plain;
+}
+
+function consume_email_token(PDO $pdo, string $plainToken, string $purpose): ?array
+{
+    if ($plainToken === '' || !in_array($purpose, ['email_verify', 'password_reset'], true)) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT et.id, et.user_id, et.purpose, et.expires_at, et.used_at, u.username, u.email, u.email_verified_at
+         FROM auth_email_tokens et
+         INNER JOIN users u ON u.id = et.user_id
+         WHERE et.token_hash = :token_hash
+           AND et.purpose = :purpose
+           AND et.used_at IS NULL
+           AND et.expires_at > NOW()
+         LIMIT 1'
+    );
+    $stmt->execute([
+        ':token_hash' => hash_token($plainToken),
+        ':purpose' => $purpose,
+    ]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return null;
+    }
+
+    $useStmt = $pdo->prepare(
+        'UPDATE auth_email_tokens
+         SET used_at = NOW()
+         WHERE id = :id AND used_at IS NULL'
+    );
+    $useStmt->execute([':id' => (int) $row['id']]);
+    if ($useStmt->rowCount() < 1) {
+        return null;
+    }
+
+    return $row;
 }
 
 function require_user(PDO $pdo): array

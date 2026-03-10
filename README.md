@@ -1,89 +1,125 @@
+# Meme Creator
 
-# Meme Creator 🎨🧠
-Projet réalisé pour mon examen de fin d’année (2e année) à l’IFAPME en développeur web 🎓.
+Meme Creator is a full web app for creating, editing, saving, and sharing memes from trending templates or custom images.
 
-Crée un meme à partir d’images tendance ou de tes propres visuels, puis partage‑le 🚀.
+It started as a school project and has since evolved into a more production-oriented product with accounts, public profiles, cloud drafts, moderation, email flows, and a dedicated PHP API.
 
-## FR / EN 🌍
+Live demo: [https://meme.altcore.fr/](https://meme.altcore.fr/)
 
-**Français (principal)**
-- Voir les sections ci‑dessous.
+## Tech Stack
 
-**English (summary)**
-- Final‑year exam project (2nd year, IFAPME Web Developer).
-- Create memes from trending templates or your own images.
-- Features include image editor, social templates, stickers, layers, exports, QR sharing, and dark/light theme.
+- Frontend: React, TypeScript, Vite, Tailwind CSS
+- Backend: PHP
+- Database: MySQL / MariaDB
+- Email: SMTP
 
-<img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" /> &nbsp; &nbsp; <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white "/>
+## Core Features
 
-## Stack 🧰
+- Meme creation from templates or custom uploads
+- Text, stickers, layers, positioning, and editing tools
+- Image editor with brightness, contrast, rotation, zoom, and effects
+- Social-ready export formats
+- Drafts, autosave, and profile-based storage
+- Public meme publishing with moderation
+- Email verification and password reset
+- Responsive UI with light and dark themes
+- Multi-language interface
 
-**Client :** React, TypeScript, TailwindCSS, Vite
+## Project Structure
 
+```text
+my-app/   Frontend application
+api/      PHP API, SQL schema, mail system, and deployment docs
+```
 
-## Préview de l'application 👀
+## Local Development
 
-Voir le site : [https://meme.altcore.fr/](https://meme.altcore.fr/)
-
-
-## Fonctionnalités ✨
-
-- 🔥 Génération de memes tendance via l’API Imgflip.
-- 🖼️ Création de memes depuis une image locale ou un lien direct.
-- 🎛️ Éditeur d’images avec réglages (luminosité, contraste, rotation, zoom, etc.).
-- 📱 Templates réseaux (story, post carré, paysage, bannière) + export auto.
-- ✍️ Texte glisser‑déposer, stickers, effets, presets et palette sauvegardée.
-- 🧩 Calques (ordre + verrouillage) et grille d’alignement.
-- 📌 Upload de stickers personnalisés.
-- 💾 Import/Export de projets en JSON + autosave & brouillons.
-- 🔗 Partage par lien + QR code (généré localement).
-- 🌓 Thème clair/sombre et interface FR/EN.
-
-
-
-## Lancer le projet 🚀
-
-
-**Step 1: Cloner ou installer le projet**
-
-
-**Step 2: Ouvrir le dossier**
+### Frontend
 
 ```bash
 cd my-app
-```
-
-**Step 3: Installer les packages**
-
-```bash
 npm install
-```
-
-**Step 3.1: Configurer les variables d'environnement (API + Ads)**
-
-```bash
 cp .env.example .env
-```
-
-Puis adapte `VITE_API_BASE_URL` selon ton serveur (ex: `https://meme.altcore.fr/api`).
-
-**Step 4: Lancer le projet** 
-
-```bash
 npm run dev
 ```
-**Step 5: Exporter le projet** 
+
+Build for production:
 
 ```bash
 npm run build
 ```
 
-## API Reference 🌐
+### API
 
-L’API Imgflip est utilisée pour récupérer les templates de memes (100 templates).
+The API lives in the `api/` directory.
 
-#### Get all meme templates
+For private server configuration, use local config files that are not committed to Git:
 
-```http
-GET https://api.imgflip.com/get_memes
+- `api/config.local.php`
+- optional local environment-specific secrets
+
+Safe examples are provided here:
+
+- `api/config.php.exemple`
+- `api/config.local.php.exemple`
+
+Read the English setup guide:
+
+- `api/CONFIGURATION.md`
+
+## Database Setup
+
+For a fresh production database, import:
+
+```text
+api/install_production.sql
 ```
+
+For existing installations that only need the email auth upgrade, use:
+
+```text
+api/migrate_email_auth.sql
+```
+
+## Authentication and Email
+
+The current backend includes:
+
+- account registration
+- login
+- forgot password
+- reset password
+- email verification
+- welcome emails
+
+Email templates are handled in:
+
+```text
+api/lib/mail.php
+```
+
+## Deployment
+
+Read the deployment checklist before pushing to production:
+
+- `DEPLOYMENT_CHECKLIST.md`
+
+Important:
+
+- never commit real secrets
+- rotate exposed credentials immediately
+- keep production config outside Git
+
+## Public Product Direction
+
+The app is being shaped toward a public-facing meme platform with:
+
+- better creator onboarding
+- richer template discovery
+- stronger account flows
+- public sharing and moderation
+- premium and creator-oriented features
+
+## License
+
+No public license has been defined yet. Add one before open-sourcing or accepting external contributions.

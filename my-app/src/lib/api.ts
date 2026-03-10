@@ -2,12 +2,20 @@ export const API_TOKEN_KEY = "meme-creator-api-token";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
+export function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${normalizedPath}`;
+}
+
 export interface ApiUser {
   id: number;
   username: string;
   email: string;
   created_at?: string;
   is_admin?: boolean;
+  email_verified?: boolean;
+  email_verified_at?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface ApiMeme {
@@ -102,7 +110,7 @@ function buildApiCandidates(path: string): string[] {
   const queryString = queryIndex >= 0 ? normalizedPath.slice(queryIndex + 1) : "";
   const routePath = pathname.replace(/^\/+/, "");
   const querySuffix = queryString ? `?${queryString}` : "";
-  const candidates = [`${API_BASE}${pathname}${querySuffix}`];
+  const candidates = [buildApiUrl(`${pathname}${querySuffix}`)];
 
   const params = new URLSearchParams(queryString);
   params.set("_path", routePath);
@@ -183,9 +191,19 @@ export async function registerApi(params: {
   email: string;
   password: string;
 }) {
-  return request<{ token: string; user: ApiUser }>("/auth/register", {
+  return request<{ token: string; user: ApiUser; verification_email_sent?: boolean }>(
+    "/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}
+
+export async function forgotPasswordApi(email: string) {
+  return request<{ sent: boolean }>("/auth/forgot-password", {
     method: "POST",
-    body: JSON.stringify(params),
+    body: JSON.stringify({ email }),
   });
 }
 
@@ -205,6 +223,31 @@ export async function logoutApi(token: string) {
     },
     token
   );
+}
+
+export async function sendVerificationEmailApi(token: string) {
+  return request<{ sent: boolean; already_verified?: boolean }>(
+    "/auth/send-verification",
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+    token
+  );
+}
+
+export async function verifyEmailApi(token: string) {
+  return request<{ verified: boolean; user: ApiUser }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resetPasswordApi(params: { token: string; password: string }) {
+  return request<{ reset: boolean }>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }
 
 export async function getMeApi(token: string) {

@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   MdAutoAwesome,
+  MdCollections,
   MdDarkMode,
+  MdEdit,
   MdLightMode,
   MdLocalFireDepartment,
   MdMilitaryTech,
+  MdPerson,
 } from "react-icons/md";
 import logo from "../assets/images/logo.png";
 import { useLanguage } from "../context/LanguageContext";
@@ -40,6 +43,33 @@ export default function Navbar() {
           days: "jours",
           challenge: "Challenge",
           turbo: "Mode turbo",
+          home: "Accueil",
+          nav: [
+            {
+              to: "/templates",
+              label: "Templates",
+              hint: "Choisir un format viral",
+              icon: MdCollections,
+            },
+            {
+              to: "/creator",
+              label: "Creator",
+              hint: "Ecrire et composer le meme",
+              icon: MdAutoAwesome,
+            },
+            {
+              to: "/editor",
+              label: "Editor",
+              hint: "Retoucher une image",
+              icon: MdEdit,
+            },
+            {
+              to: "/profile",
+              label: "Profile",
+              hint: "Sauvegardes et compte",
+              icon: MdPerson,
+            },
+          ],
         }
       : {
           level: "Level",
@@ -47,6 +77,33 @@ export default function Navbar() {
           days: "days",
           challenge: "Challenge",
           turbo: "Turbo mode",
+          home: "Home",
+          nav: [
+            {
+              to: "/templates",
+              label: "Templates",
+              hint: "Pick a viral format",
+              icon: MdCollections,
+            },
+            {
+              to: "/creator",
+              label: "Creator",
+              hint: "Write and build the meme",
+              icon: MdAutoAwesome,
+            },
+            {
+              to: "/editor",
+              label: "Editor",
+              hint: "Polish an image",
+              icon: MdEdit,
+            },
+            {
+              to: "/profile",
+              label: "Profile",
+              hint: "Account and saves",
+              icon: MdPerson,
+            },
+          ],
         };
 
   const headerClasses = isDark
@@ -73,15 +130,19 @@ export default function Navbar() {
             className="group flex items-center gap-3"
             aria-label={t("brand.name")}
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400 shadow-lg shadow-fuchsia-500/30 transition group-hover:scale-105">
+            <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-[1.15rem] border border-white/15 bg-slate-950 shadow-lg shadow-fuchsia-500/20 transition duration-300 group-hover:scale-[1.04] group-hover:rotate-[-4deg]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(217,70,239,0.28),_transparent_46%),linear-gradient(135deg,rgba(34,211,238,0.2),rgba(244,114,182,0.14),rgba(245,158,11,0.2))]" />
+              <div className="absolute inset-[2px] rounded-[1rem] border border-white/10 bg-slate-950/90" />
               <img
                 src={logo}
                 alt={t("brand.name")}
-                className="h-8 w-8"
+                className="relative h-8 w-8 drop-shadow-[0_4px_12px_rgba(244,114,182,0.35)]"
               />
             </div>
             <div>
-              <p className="rgb-text text-lg">{t("brand.name")}</p>
+              <p className="font-smash-slice text-lg tracking-wide text-white">
+                {t("brand.name")}
+              </p>
               <p className={`hidden text-xs sm:block ${mutedTextClasses}`}>
                 {t("brand.tagline")}
               </p>
@@ -146,58 +207,67 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <nav className="flex items-center gap-2 overflow-x-auto pb-1">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition ${isActive ? activeNavClasses : idleNavClasses}`
-              }
-            >
-              {t("navbar.home")}
-            </NavLink>
-            <NavLink
-              to="/creator"
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition ${isActive ? activeNavClasses : idleNavClasses}`
-              }
-            >
-              {t("navbar.creator")}
-            </NavLink>
-            <NavLink
-              to="/editor"
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition ${isActive ? activeNavClasses : idleNavClasses}`
-              }
-            >
-              {t("navbar.editor")}
-            </NavLink>
-            <NavLink
-              to="/profile"
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition ${isActive ? activeNavClasses : idleNavClasses}`
-              }
-            >
-              {t("navbar.profile")}
-            </NavLink>
-          </nav>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <nav className="flex items-center gap-2 overflow-x-auto pb-1">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  `whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition ${isActive ? activeNavClasses : idleNavClasses}`
+                }
+              >
+                {copy.home}
+              </NavLink>
+            </nav>
 
-          <div className={`hidden items-center gap-3 text-xs md:flex ${mutedTextClasses}`}>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-1 text-amber-200">
-              <MdLocalFireDepartment className="text-sm" />
-              {copy.streak} {engagement.currentStreak} {copy.days}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-2 py-1">
-              {copy.challenge} {engagement.challengeProgress}/{engagement.challengeGoal}
-              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-800">
-                <span
-                  className="block h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 transition-all duration-300"
-                  style={{ width: `${Math.max(8, challengePercent)}%` }}
-                />
+            <div className={`hidden items-center gap-3 text-xs md:flex ${mutedTextClasses}`}>
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-1 text-amber-200">
+                <MdLocalFireDepartment className="text-sm" />
+                {copy.streak} {engagement.currentStreak} {copy.days}
               </span>
-            </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-2 py-1">
+                {copy.challenge} {engagement.challengeProgress}/{engagement.challengeGoal}
+                <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-800">
+                  <span
+                    className="block h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 transition-all duration-300"
+                    style={{ width: `${Math.max(8, challengePercent)}%` }}
+                  />
+                </span>
+              </span>
+            </div>
           </div>
+
+          <nav className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {copy.nav.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `rounded-2xl border px-4 py-3 transition ${
+                      isActive
+                        ? "border-fuchsia-400/50 bg-fuchsia-500/15 text-white shadow-lg shadow-fuchsia-500/10"
+                        : `${controlClasses} hover:border-fuchsia-400/50 hover:text-white`
+                    }`
+                  }
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 rounded-xl bg-white/10 p-2 text-base">
+                      <Icon />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold">{item.label}</p>
+                      <p className={`mt-0.5 text-[11px] ${mutedTextClasses}`}>
+                        {item.hint}
+                      </p>
+                    </div>
+                  </div>
+                </NavLink>
+              );
+            })}
+          </nav>
         </div>
       </div>
     </header>

@@ -13,6 +13,7 @@ import {
 import { useLanguage } from "../context/LanguageContext";
 import { readEngagementSnapshot } from "../lib/engagement";
 import { getPublicMemesApi, type ApiMeme } from "../lib/api";
+import { encodeSharePayload, isSharePayloadTooLarge, SHARE_QUERY_KEY } from "../lib/share";
 
 export default function Landing() {
   const { t, language } = useLanguage();
@@ -159,10 +160,10 @@ export default function Landing() {
       Array.isArray(payload.textLayers) &&
       Array.isArray(payload.stickers)
     ) {
-      const encoded = encodeURIComponent(
-        btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-      );
-      return `/creator?memeShare=${encoded}`;
+      if (isSharePayloadTooLarge(payload)) {
+        return `/m/${meme.id}`;
+      }
+      return `/creator?${SHARE_QUERY_KEY}=${encodeSharePayload(payload)}`;
     }
     return `/m/${meme.id}`;
   };
@@ -388,6 +389,8 @@ export default function Landing() {
                     <img
                       src={preview}
                       alt={meme.title}
+                      loading="lazy"
+                      decoding="async"
                       className="h-36 w-full object-cover"
                     />
                   ) : (

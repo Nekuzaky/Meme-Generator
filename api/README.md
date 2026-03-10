@@ -4,7 +4,9 @@ API backend for `meme.altcore.fr/api/`.
 
 ## Setup
 
-1. Import `schema.sql` into your MySQL database.
+1. Import `install_production.sql` into your MySQL database for the full production schema.
+   Fallback: `schema.sql` remains the minimal base schema.
+   If your database already exists, apply `migrate_email_auth.sql` before deploying the new auth/email flows.
 2. Deploy this folder as `/api`.
 3. Ensure PHP has PDO MySQL enabled.
 4. If using Apache, keep `.htaccess` for routing.
@@ -14,12 +16,17 @@ API backend for `meme.altcore.fr/api/`.
 8. Optional AI: set `ai.openai_api_key` (fallback local generator works without key).
 9. Set `app.public_base_url` to your production frontend URL for OG rendering (e.g. `https://meme.altcore.fr`).
 10. Copy `config.local.php.exemple` to `config.local.php` and put all secrets there (file ignored by Git).
+11. Check `https://your-domain/api/health.php` after deploy to confirm DB + routing are healthy.
 
 ## Auth flow
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout` (Bearer token)
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
+- `POST /api/auth/send-verification` (Bearer token)
+- `POST /api/auth/verify-email`
 - `GET /api/me` (Bearer token)
 
 Use header:
