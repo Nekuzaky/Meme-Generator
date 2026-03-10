@@ -2,12 +2,17 @@ import {
   MdArrowDownward,
   MdArrowUpward,
   MdAutoFixHigh,
+  MdCasino,
+  MdCelebration,
   MdDownload,
+  MdFlip,
+  MdGifBox,
   MdLock,
   MdLockOpen,
   MdOfflineBolt,
   MdRedo,
   MdShare,
+  MdTune,
   MdUndo,
   MdUpload,
 } from "react-icons/md";
@@ -86,6 +91,7 @@ type VariantSlot = {
 const deepClone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const loadDomToImage = () => import("dom-to-image");
 const loadFileSaver = () => import("file-saver");
+const loadGifshot = () => import("gifshot");
 const loadQrCode = () => import("qrcode");
 const randomItem = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
 const remixColors = [
@@ -96,6 +102,14 @@ const remixColors = [
   ["#86efac", "#14532d"],
 ];
 const remixEffects: Box["effect"][] = ["none", "arc", "outline", "gradient", "shake"];
+type FunFilterKey = "none" | "punch" | "mono" | "vhs" | "sunset";
+const imageFilterPresets: Record<FunFilterKey, string> = {
+  none: "none",
+  punch: "contrast(1.14) saturate(1.22)",
+  mono: "grayscale(1) contrast(1.08)",
+  vhs: "contrast(1.16) saturate(0.95) hue-rotate(-10deg)",
+  sunset: "sepia(0.38) saturate(1.28) hue-rotate(-18deg)",
+};
 const LOCAL_CREATOR_FALLBACK_KEY = "meme-creator-cloud-fallback";
 
 export default function MemeGenerator({
@@ -136,6 +150,9 @@ export default function MemeGenerator({
   const [aiStatus, setAiStatus] = useState<string | null>(null);
   const [variantSlots, setVariantSlots] = useState<Partial<Record<VariantSlotKey, VariantSlot>>>({});
   const [isExportingVariants, setIsExportingVariants] = useState(false);
+  const [imageFilterKey, setImageFilterKey] = useState<FunFilterKey>("none");
+  const [isMirrored, setIsMirrored] = useState(false);
+  const [isExportingGif, setIsExportingGif] = useState(false);
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
@@ -320,6 +337,8 @@ export default function MemeGenerator({
     setVersions([]);
     setShowVersions(false);
     setAutosaveState("idle");
+    setImageFilterKey("none");
+    setIsMirrored(false);
   }, [imageUrl, imageName, box_count]);
 
   useEffect(() => {
@@ -672,6 +691,178 @@ export default function MemeGenerator({
     const { saveAs } = await loadFileSaver();
     saveAs(blob, getPngFileName());
     trackEngagement("download");
+  };
+
+  const randomPunchlineBlast = () => {
+    const pools =
+      language === "fr"
+        ? {
+            top: [
+              "MOI QUAND JE DIS JUSTE UNE EPISODE",
+              "LE PLAN ETAIT SIMPLE",
+              "QUAND LE CAFE FAIT EFFET",
+              "MOOD DU LUNDI MATIN",
+            ],
+            bottom: [
+              "2H PLUS TARD JE DEBOGUE ENCORE",
+              "CA PART EN CHAOS TOTAL",
+              "LE CLAVIER PREND DES DEGATS",
+              "FINAL BOSS: LA PROD",
+            ],
+          }
+        : {
+            top: [
+              "ME SAYING JUST ONE EPISODE",
+              "THE PLAN WAS SIMPLE",
+              "WHEN COFFEE KICKS IN",
+              "MONDAY MORNING MOOD",
+            ],
+            bottom: [
+              "2 HOURS LATER STILL DEBUGGING",
+              "TOTAL CHAOS MODE",
+              "KEYBOARD TAKING DAMAGE",
+              "FINAL BOSS: PRODUCTION",
+            ],
+          };
+
+    const nextBoxes = deepClone(boxes);
+    if (nextBoxes.length === 0) {
+      nextBoxes.push(createDefaultBox(0), createDefaultBox(1));
+      setBoxesCount(2);
+      setTextLayers([
+        createDefaultTextLayer(0, 1),
+        createDefaultTextLayer(1, 2),
+      ]);
+    }
+
+    const updated = nextBoxes.map((box, index) => ({
+      ...box,
+      text: index === 0 ? randomItem(pools.top) : randomItem(pools.bottom),
+      effect: index === 0 ? "outline" : box.effect,
+    }));
+    replaceBoxes(updated);
+    setShareStatus(language === "fr" ? "Punchlines generees." : "Punchlines generated.");
+    trackEngagement("edit");
+  };
+
+  const addStickerBurst = () => {
+    const burstCount = 6;
+    setStickers((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < burstCount; i += 1) {
+        next.push({
+          id: createStickerId(),
+          emoji: randomItem(stickerOptions),
+          kind: "emoji",
+          x: 16 + (i % 3) * 84 + Math.floor(Math.random() * 24),
+          y: 18 + Math.floor(i / 3) * 84 + Math.floor(Math.random() * 24),
+          size: 44 + Math.floor(Math.random() * 22),
+          locked: false,
+          zIndex: getNextZIndex(textLayers, next),
+        });
+      }
+      return next.slice(0, 40);
+    });
+    setShareStatus(language === "fr" ? "Sticker burst ajoute." : "Sticker burst added.");
+    trackEngagement("edit");
+  };
+
+  const cycleImageFilter = () => {
+    const order: FunFilterKey[] = ["none", "punch", "mono", "vhs", "sunset"];
+    const currentIndex = order.indexOf(imageFilterKey);
+    const next = order[(currentIndex + 1) % order.length];
+    setImageFilterKey(next);
+    const filterLabel =
+      next === "none"
+        ? language === "fr"
+          ? "Aucun"
+          : "None"
+        : next.toUpperCase();
+    setShareStatus(
+      language === "fr" ? `Filtre actif: ${filterLabel}.` : `Active filter: ${filterLabel}.`
+    );
+  };
+
+  const toggleMirrorMode = () => {
+    setIsMirrored((prev) => !prev);
+    trackEngagement("edit");
+  };
+
+  const exportGif = async () => {
+    const node = document.getElementById("downloadMeme");
+    if (!node) return;
+    const detachedStylesheets: HTMLLinkElement[] = [];
+    const previousFilter = node.style.filter;
+    const previousTransform = node.style.transform;
+    const previousTransition = node.style.transition;
+    const frameStyles = [
+      { filter: "none", transform: "translate(0px, 0px)" },
+      { filter: "contrast(1.08) saturate(1.1) hue-rotate(10deg)", transform: "translate(1px, -1px)" },
+      { filter: "contrast(1.14) saturate(1.22)", transform: "translate(-1px, 1px)" },
+      { filter: "brightness(1.06) saturate(1.18) hue-rotate(-8deg)", transform: "translate(0px, 0px)" },
+    ];
+
+    try {
+      setIsExportingGif(true);
+      setIsExporting(true);
+      document
+        .querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href^="http"]')
+        .forEach((link) => {
+          if (!link.parentNode) return;
+          detachedStylesheets.push(link);
+          link.parentNode.removeChild(link);
+        });
+
+      const domtoimage = await loadDomToImage();
+      const frames: string[] = [];
+      node.style.transition = "none";
+      for (const frame of frameStyles) {
+        node.style.filter = frame.filter;
+        node.style.transform = frame.transform;
+        await waitForUiCommit();
+        const png = await domtoimage.default.toPng(node);
+        frames.push(png);
+      }
+
+      const gifshot = await loadGifshot();
+      const gifDataUrl = await new Promise<string>((resolve, reject) => {
+        gifshot.default.createGIF(
+          {
+            images: frames,
+            gifWidth: Math.max(320, node.clientWidth),
+            gifHeight: Math.max(320, node.clientHeight),
+            interval: 0.16,
+            numFrames: frames.length,
+            sampleInterval: 8,
+          },
+          (result: { error?: boolean; image?: string; errorCode?: string }) => {
+            if (!result.error && result.image) {
+              resolve(result.image);
+              return;
+            }
+            reject(new Error(result.errorCode || "GIF generation failed"));
+          }
+        );
+      });
+
+      const response = await fetch(gifDataUrl);
+      const gifBlob = await response.blob();
+      const { saveAs } = await loadFileSaver();
+      saveAs(gifBlob, `${getBaseFileName()}.gif`);
+      setShareStatus(language === "fr" ? "GIF exporte." : "GIF exported.");
+      trackEngagement("download");
+    } catch {
+      setShareStatus(language === "fr" ? "Echec export GIF." : "GIF export failed.");
+    } finally {
+      node.style.filter = previousFilter;
+      node.style.transform = previousTransform;
+      node.style.transition = previousTransition;
+      detachedStylesheets.forEach((link) => {
+        document.head.appendChild(link);
+      });
+      setIsExporting(false);
+      setIsExportingGif(false);
+    }
   };
 
   const exportSocialTemplate = async (template: {
@@ -1310,6 +1501,8 @@ export default function MemeGenerator({
         <div className="w-full xl:w-[52%]">
           <ImageSection
             image={activeImageUrl}
+            imageFilter={imageFilterPresets[imageFilterKey]}
+            isMirrored={isMirrored}
             stickers={stickers}
             onStickerChange={updateSticker}
             onTextLayerChange={updateTextLayer}
@@ -1417,6 +1610,22 @@ export default function MemeGenerator({
 
               <button
                 type="button"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 shadow-sm transition hover:border-cyan-300/70 hover:text-white disabled:opacity-50 sm:w-auto"
+                onClick={exportGif}
+                disabled={isExportingGif}
+              >
+                <MdGifBox className="text-lg" />
+                {isExportingGif
+                  ? language === "fr"
+                    ? "Export GIF..."
+                    : "GIF export..."
+                  : language === "fr"
+                    ? "Exporter GIF"
+                    : "Export GIF"}
+              </button>
+
+              <button
+                type="button"
                 className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-fuchsia-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 onClick={shareMeme}
                 disabled={isSharing}
@@ -1505,6 +1714,63 @@ export default function MemeGenerator({
                     {item}
                   </p>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {language === "fr" ? "Fun Lab" : "Fun Lab"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {language === "fr"
+                      ? "Mode fun: punchlines auto, sticker burst, filtres visuels, miroir et export GIF."
+                      : "Fun mode: auto punchlines, sticker burst, visual filters, mirror mode, and GIF export."}
+                  </p>
+                </div>
+                <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-100">
+                  Dynamic
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={randomPunchlineBlast}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-fuchsia-400/60"
+                >
+                  <MdCasino className="text-base" />
+                  {language === "fr" ? "Punchline blast" : "Punchline blast"}
+                </button>
+                <button
+                  type="button"
+                  onClick={addStickerBurst}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-amber-400/60"
+                >
+                  <MdCelebration className="text-base" />
+                  {language === "fr" ? "Sticker burst" : "Sticker burst"}
+                </button>
+                <button
+                  type="button"
+                  onClick={cycleImageFilter}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-cyan-400/60"
+                >
+                  <MdTune className="text-base" />
+                  {language === "fr" ? "Cycle filtres" : "Cycle filters"}
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMirrorMode}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                    isMirrored
+                      ? "border-rose-400/60 bg-rose-500/15 text-rose-100"
+                      : "border-white/10 bg-slate-950/70 text-slate-100 hover:border-rose-400/60"
+                  }`}
+                >
+                  <MdFlip className="text-base" />
+                  {language === "fr" ? "Mode miroir" : "Mirror mode"}
+                </button>
               </div>
             </div>
 

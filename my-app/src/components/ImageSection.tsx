@@ -6,6 +6,8 @@ import type { TextEffect } from "../types/types";
 
 interface IProps {
   image: string;
+  imageFilter?: string;
+  isMirrored?: boolean;
   textLayers?: {
     id: string;
     index: number;
@@ -46,6 +48,8 @@ interface IProps {
 
 export default function ImageSection({
   image,
+  imageFilter = "none",
+  isMirrored = false,
   textLayers = [],
   stickers = [],
   selectedLayer,
@@ -203,6 +207,10 @@ export default function ImageSection({
         src={image}
         alt={t("image.alt")}
         className="relative h-full w-full object-contain"
+        style={{
+          filter: imageFilter,
+          transform: isMirrored ? "scaleX(-1)" : undefined,
+        }}
       />
 
       {boxes !== undefined &&
